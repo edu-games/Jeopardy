@@ -1,14 +1,17 @@
 <script lang="ts">
     import type { PageData } from "./$types";
+    import { onMount } from "svelte";
 
     let { data }: { data: PageData } = $props();
 
     let starting = $state(false);
 
+    // Real-time state
+    let teams = $state(data.game.teams);
+    let students = $state(data.game.students);
+
     // Get unassigned students
-    let unassignedStudents = $derived(
-        data.game.students.filter((s) => !s.teamId),
-    );
+    let unassignedStudents = $derived(students.filter((s) => !s.teamId));
 
     async function assignStudent(studentId: string, teamId: string) {
         const response = await fetch(`/api/games/${data.game.id}/assign-team`, {
@@ -59,6 +62,56 @@
         navigator.clipboard.writeText(joinUrl);
         alert("Join URL copied to clipboard!");
     }
+
+    // Set up Server-Sent Events for real-time updates
+    onMount(() => {
+        const eventSource = new EventSource(`/api/sse/${data.game.id}`);
+
+        eventSource.onmessage = (event) => {
+            try {
+                const eventData = JSON.parse(event.data);
+                console.log("[SSE Lobby] Received event:", eventData.type);
+
+                switch (eventData.type) {
+                    case "connected":
+                        console.log(
+                            "[SSE Lobby] Connected with client ID:",
+                            eventData.clientId,
+                        );
+                        break;
+
+                    case "student-joined":
+                        // New student joined
+                        students = eventData.students;
+                        teams = eventData.teams;
+                        break;
+
+                    case "team-assigned":
+                        // Student was assigned to a team
+                        students = eventData.students;
+                        teams = eventData.teams;
+                        break;
+
+                    case "game-started":
+                        // Game started, redirect to play page
+                        window.location.href = `/dashboard/games/${data.game.id}/play`;
+                        break;
+                }
+            } catch (error) {
+                console.error("[SSE Lobby] Error parsing event:", error);
+            }
+        };
+
+        eventSource.onerror = (error) => {
+            console.error("[SSE Lobby] Connection error:", error);
+            eventSource.close();
+        };
+
+        // Cleanup on unmount
+        return () => {
+            eventSource.close();
+        };
+    });
 </script>
 
 <div class="max-w-7xl mx-auto">
@@ -72,7 +125,7 @@
             </div>
             <button
                 onclick={startGame}
-                disabled={starting || data.game.students.length === 0}
+                disabled={starting || students.length === 0}
                 class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
                 {#if starting}
@@ -216,7 +269,7 @@
 
         <!-- Teams and Students -->
         <div class="lg:col-span-2 space-y-4">
-            {#each data.game.teams as team}
+            {#each teams as team}
                 <div class="bg-white rounded-lg shadow p-6">
                     <div class="flex items-center gap-3 mb-4">
                         <div
@@ -269,7 +322,7 @@
                                     >{student.name}</span
                                 >
                                 <div class="flex gap-2">
-                                    {#each data.game.teams as team}
+                                    {#each teams as team}
                                         <button
                                             onclick={() =>
                                                 assignStudent(
@@ -290,7 +343,7 @@
             {/if}
 
             <!-- Empty State -->
-            {#if data.game.students.length === 0}
+            {#if students.length === 0}
                 <div class="bg-white rounded-lg shadow p-8 text-center">
                     <svg
                         class="w-16 h-16 mx-auto text-gray-400 mb-4"
