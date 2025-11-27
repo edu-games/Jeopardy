@@ -1,111 +1,129 @@
-import bcrypt from 'bcrypt';
-import { dev } from '$app/environment';
-import type { Cookies } from '@sveltejs/kit';
-import prisma from './prisma';
+import bcrypt from "bcrypt";
+import { dev } from "$app/environment";
+import type { Cookies } from "@sveltejs/kit";
+import prisma from "./prisma";
 
-const SESSION_COOKIE_NAME = 'session';
+const SESSION_COOKIE_NAME = "session";
 const SALT_ROUNDS = 10;
-
-// Simple in-memory session store for development
-// In production, use Redis or database-backed sessions
-const sessions = new Map<string, { instructorId: string; expiresAt: number }>();
 
 /**
  * Hash a password using bcrypt
  */
 export async function hashPassword(password: string): Promise<string> {
-	return bcrypt.hash(password, SALT_ROUNDS);
+  return bcrypt.hash(password, SALT_ROUNDS);
 }
 
 /**
  * Verify a password against a hash
  */
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-	return bcrypt.compare(password, hash);
-}
-
-/**
- * Generate a random session ID
- */
-function generateSessionId(): string {
-	return crypto.randomUUID();
+export async function verifyPassword(
+  password: string,
+  hash: string,
+): Promise<boolean> {
+  return bcrypt.compare(password, hash);
 }
 
 /**
  * Create a session for an instructor
  */
-export async function createSession(instructorId: string, cookies: Cookies): Promise<string> {
-	const sessionId = generateSessionId();
-	const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
+export async function createSession(
+  instructorId: string,
+  cookies: Cookies,
+): Promise<string> {
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
-	// Store session
-	sessions.set(sessionId, { instructorId, expiresAt });
+  // Store session in database
+  const session = await prisma.session.create({
+    data: {
+      instructorId,
+      expiresAt,
+    },
+  });
 
-	// Set cookie
-	cookies.set(SESSION_COOKIE_NAME, sessionId, {
-		path: '/',
-		httpOnly: true,
-		sameSite: 'lax',
-		secure: !dev,
-		maxAge: 60 * 60 * 24 * 7 // 7 days
-	});
+  // Set cookie
+  cookies.set(SESSION_COOKIE_NAME, session.id, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: !dev,
+    maxAge: 60 * 60 * 24 * 30, // 30 days
+  });
 
-	return sessionId;
+  return session.id;
 }
 
 /**
  * Get the instructor from a session
  */
 export async function getInstructorFromSession(cookies: Cookies) {
-	const sessionId = cookies.get(SESSION_COOKIE_NAME);
-	if (!sessionId) return null;
+  const sessionId = cookies.get(SESSION_COOKIE_NAME);
+  if (!sessionId) return null;
 
-	const session = sessions.get(sessionId);
-	if (!session) return null;
+  // Get session from database
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+    include: {
+      instructor: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+        },
+      },
+    },
+  });
 
-	// Check if session expired
-	if (session.expiresAt < Date.now()) {
-		sessions.delete(sessionId);
-		return null;
-	}
+  if (!session) return null;
 
-	// Get instructor from database
-	const instructor = await prisma.instructor.findUnique({
-		where: { id: session.instructorId },
-		select: {
-			id: true,
-			email: true,
-			name: true
-		}
-	});
+  // Check if session expired
+  if (session.expiresAt < new Date()) {
+    // Delete expired session
+    await prisma.session.delete({
+      where: { id: sessionId },
+    });
+    return null;
+  }
 
-	return instructor;
+  return session.instructor;
 }
 
 /**
  * Delete a session (logout)
  */
 export async function deleteSession(cookies: Cookies): Promise<void> {
-	const sessionId = cookies.get(SESSION_COOKIE_NAME);
-	if (sessionId) {
-		sessions.delete(sessionId);
-	}
-	cookies.delete(SESSION_COOKIE_NAME, { path: '/' });
+  const sessionId = cookies.get(SESSION_COOKIE_NAME);
+  if (sessionId) {
+    // Delete session from database
+    await prisma.session
+      .delete({
+        where: { id: sessionId },
+      })
+      .catch(() => {
+        // Ignore errors if session doesn't exist
+      });
+  }
+  cookies.delete(SESSION_COOKIE_NAME, { path: "/" });
 }
 
 /**
  * Clean up expired sessions (should be called periodically)
  */
-export function cleanupExpiredSessions(): void {
-	const now = Date.now();
-	for (const [sessionId, session] of sessions.entries()) {
-		if (session.expiresAt < now) {
-			sessions.delete(sessionId);
-		}
-	}
+export async function cleanupExpiredSessions(): Promise<void> {
+  await prisma.session.deleteMany({
+    where: {
+      expiresAt: {
+        lt: new Date(),
+      },
+    },
+  });
 }
 
-// Clean up expired sessions every hour in development
+// Clean up expired sessions every hour
 if (dev) {
-	setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
+  setInterval(
+    () => {
+      cleanupExpiredSessions().catch(console.error);
+    },
+    60 * 60 * 1000,
+  );
 }
