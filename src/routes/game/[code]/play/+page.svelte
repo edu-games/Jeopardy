@@ -99,6 +99,10 @@
 
                     case "answer-submitted":
                         // Answer was submitted, update scores and reset question
+                        console.log(
+                            "[SSE] Answer submitted, updating teams:",
+                            eventData.teams,
+                        );
                         teams = eventData.teams;
                         if (gameState) {
                             gameState.answeredSlots = eventData.answeredSlots;
@@ -372,7 +376,7 @@
                     All Teams
                 </h3>
                 <div class="grid grid-cols-2 gap-3">
-                    {#each teams as team}
+                    {#each teams as team (team.id)}
                         <div
                             class="p-4 rounded-lg text-center {team.id ===
                             myTeam?.id
