@@ -1,6 +1,5 @@
 <script lang="ts">
     import type { PageData } from "./$types";
-    import { PUBLIC_APP_URL } from "$env/static/public";
 
     let { data }: { data: PageData } = $props();
 
@@ -56,7 +55,7 @@
     }
 
     function copyJoinUrl() {
-        const joinUrl = `${PUBLIC_APP_URL}/game/${data.game.code}/join`;
+        const joinUrl = `${data.baseUrl}/game/${data.game.code}/join`;
         navigator.clipboard.writeText(joinUrl);
         alert("Join URL copied to clipboard!");
     }
@@ -162,7 +161,7 @@
                 <div class="flex items-center gap-2">
                     <input
                         type="text"
-                        value={`${PUBLIC_APP_URL}/game/${data.game.code}/join`}
+                        value={`${data.baseUrl}/game/${data.game.code}/join`}
                         readonly
                         class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50"
                     />
