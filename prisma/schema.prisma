@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Instructor {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  password  String     // hashed
+  name      String
+  questions Question[] // Question bank owned by instructor
+  boards    Board[]
+  games     Game[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Question {
+  id           String              @id @default(cuid())
+  answer       String              // The clue shown to players
+  question     String              // The correct response
+  instructorId String
+  instructor   Instructor          @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  tags         QuestionTag[]
+  boardSlots   BoardQuestionSlot[] // Questions can be used in multiple boards
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+model Tag {
+  id        String        @id @default(cuid())
+  name      String        @unique
+  questions QuestionTag[]
+  createdAt DateTime      @default(now())
+}
+
+model QuestionTag {
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  tagId      String
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([questionId, tagId])
+}
+
+model Board {
+  id           String     @id @default(cuid())
+  name         String
+  description  String?
+  instructorId String
+  instructor   Instructor @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  categories   Category[]
+  games        Game[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Category {
+  id         String              @id @default(cuid())
+  name       String
+  order      Int                 // 0-5 for positioning
+  boardId    String
+  board      Board               @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  slots      BoardQuestionSlot[] // 5 slots per category
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+}
+
+// Join table linking questions to board positions with point values
+model BoardQuestionSlot {
+  id            String   @id @default(cuid())
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  questionId    String
+  question      Question @relation(fields: [questionId], references: [id])
+  position      Int      // 0-4 (row position in category)
+  points        Int      // Point value for this position (200, 400, 600, 800, 1000)
+  isDailyDouble Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([categoryId, position])
+}
+
+model Game {
+  id              String         @id @default(cuid())
+  code            String         @unique // Join code for QR
+  boardId         String
+  board           Board          @relation(fields: [boardId], references: [id])
+  instructorId    String
+  instructor      Instructor     @relation(fields: [instructorId], references: [id])
+  status          GameStatus     @default(LOBBY)
+  teamAssignment  TeamAssignment @default(RANDOM)
+  teams           Team[]
+  students        Student[]
+  gameState       GameState?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+enum GameStatus {
+  LOBBY
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TeamAssignment {
+  MANUAL
+  RANDOM
+}
+
+model Team {
+  id        String    @id @default(cuid())
+  name      String
+  color     String
+  score     Int       @default(0)
+  gameId    String
+  game      Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  students  Student[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Student {
+  id        String    @id @default(cuid())
+  name      String
+  gameId    String
+  game      Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  teamId    String?
+  team      Team?     @relation(fields: [teamId], references: [id])
+  buzzerAt  DateTime? // Last buzzer press timestamp
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model GameState {
+  id                String   @id @default(cuid())
+  gameId            String   @unique
+  game              Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  currentSlotId     String?  // Current BoardQuestionSlot being played
+  answeredSlots     String[] // Array of BoardQuestionSlot IDs that have been answered
+  currentTeamId     String?  // Team currently answering
+  questionStartedAt DateTime?
+  buzzerEnabled     Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

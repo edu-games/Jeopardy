@@ -1,0 +1,33 @@
+import type { PageServerLoad } from './$types';
+import prisma from '$lib/server/prisma';
+
+export const load: PageServerLoad = async ({ locals }) => {
+	// Get all questions for this instructor
+	const questions = await prisma.question.findMany({
+		where: {
+			instructorId: locals.instructor!.id
+		},
+		include: {
+			tags: {
+				include: {
+					tag: true
+				}
+			}
+		},
+		orderBy: {
+			createdAt: 'desc'
+		}
+	});
+
+	// Get all tags
+	const tags = await prisma.tag.findMany({
+		orderBy: {
+			name: 'asc'
+		}
+	});
+
+	return {
+		questions,
+		tags
+	};
+};
