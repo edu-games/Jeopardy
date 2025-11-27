@@ -25,14 +25,6 @@
     let creating = $state(false);
     let error = $state("");
 
-    $effect(() => {
-        // Update team names when count changes
-        teamNames = Array.from(
-            { length: 6 },
-            (_, i) => teamNames[i] || `Team ${i + 1}`,
-        );
-    });
-
     let selectedBoard = $derived(
         data.boards.find((b) => b.id === selectedBoardId),
     );
@@ -136,12 +128,13 @@
                 {#each data.boards as board}
                     <button
                         type="button"
-                        onclick={() => (selectedBoardId = board.id)}
-                        class={`text-left p-4 border-2 rounded-lg transition-all ${
-                            selectedBoardId === board.id
-                                ? "border-blue-500 bg-blue-50"
-                                : "border-gray-300 hover:border-blue-300"
-                        }`}
+                        onclick={() => {
+                            selectedBoardId = board.id;
+                        }}
+                        class="text-left p-4 border-2 rounded-lg transition-all {selectedBoardId ===
+                        board.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-300 hover:border-blue-300'}"
                     >
                         <h3 class="font-semibold text-gray-900 mb-2">
                             {board.name}

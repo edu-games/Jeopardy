@@ -89,11 +89,10 @@
                     case "question-revealed":
                         // New question revealed
                         currentSlotData = eventData.currentSlot;
-                        gameState = {
-                            ...gameState,
-                            currentSlotId: eventData.slotId,
-                            buzzerEnabled: eventData.buzzerEnabled,
-                        };
+                        if (gameState) {
+                            gameState.currentSlotId = eventData.slotId;
+                            gameState.buzzerEnabled = eventData.buzzerEnabled;
+                        }
                         buzzerPressed = false; // Reset buzzer state for new question
                         buzzerError = "";
                         break;
@@ -101,12 +100,11 @@
                     case "answer-submitted":
                         // Answer was submitted, update scores and reset question
                         teams = eventData.teams;
-                        gameState = {
-                            ...gameState,
-                            answeredSlots: eventData.answeredSlots,
-                            currentSlotId: eventData.currentSlotId,
-                            buzzerEnabled: false,
-                        };
+                        if (gameState) {
+                            gameState.answeredSlots = eventData.answeredSlots;
+                            gameState.currentSlotId = eventData.currentSlotId;
+                            gameState.buzzerEnabled = false;
+                        }
                         currentSlotData = null;
                         buzzerPressed = false;
                         break;
@@ -143,7 +141,7 @@
 
 <div class="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 p-4">
     <div class="max-w-4xl mx-auto">
-        <!-- Header with Student Info -->>
+        <!-- Header with Student Info -->
         <div class="mb-6 bg-white/10 backdrop-blur-sm rounded-lg p-6">
             <div class="text-center">
                 <h1 class="text-3xl font-bold text-white mb-2">Jeopardy!</h1>
@@ -153,7 +151,7 @@
             </div>
         </div>
 
-        <!-- Team Info -->>
+        <!-- Team Info -->
         {#if myTeam}
             <div
                 class="mb-6 p-6 rounded-lg"
@@ -188,7 +186,7 @@
             </div>
         {/if}
 
-        <!-- Game Status -->>
+        <!-- Game Status -->
         {#if data.game.status === "LOBBY"}
             <div
                 class="bg-white/10 backdrop-blur-sm rounded-lg p-8 text-center"
@@ -217,7 +215,7 @@
                 </p>
             </div>
         {:else if data.game.status === "IN_PROGRESS"}
-            <!-- Current Question Info -->>
+            <!-- Current Question Info -->
             {#if currentSlot && currentCategory}
                 <div class="mb-6 bg-blue-800 rounded-lg p-6">
                     <div class="text-center mb-4">
@@ -236,7 +234,7 @@
                         {/if}
                     </div>
 
-                    <!-- Clue Display -->>
+                    <!-- Clue Display -->
                     <div class="bg-blue-700 rounded-lg p-6 mb-4">
                         <p
                             class="text-sm text-blue-300 mb-2 uppercase tracking-wide text-center"
@@ -248,7 +246,7 @@
                         </p>
                     </div>
 
-                    <!-- Buzzer Button -->>
+                    <!-- Buzzer Button -->
                     {#if buzzerEnabled && !buzzerPressed}
                         <button
                             type="button"
@@ -368,7 +366,7 @@
                 </div>
             {/if}
 
-            <!-- All Teams Scoreboard -->>
+            <!-- All Teams Scoreboard -->
             <div class="mt-6 bg-white/10 backdrop-blur-sm rounded-lg p-6">
                 <h3 class="text-xl font-bold text-white mb-4 text-center">
                     All Teams
