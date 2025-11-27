@@ -60,7 +60,7 @@ export type GameEvent =
   | { type: "game-started"; status: string }
   | { type: "game-ended"; status: string; finalScores: any[] }
   | { type: "student-joined"; students: any[]; teams: any[] }
-  | { type: "team-assigned"; studentId: string; teamId: string; team: any }
+  | { type: "team-assigned"; students: any[]; teams: any[] }
   | { type: "buzzer-enabled"; enabled: boolean }
   | { type: "buzzer-disabled"; enabled: boolean };
 
