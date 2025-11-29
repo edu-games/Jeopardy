@@ -193,11 +193,14 @@
 
             <!-- Join Code -->
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2"
+                <label
+                    for="game-code"
+                    class="block text-sm font-medium text-gray-700 mb-2"
                     >Game Code</label
                 >
                 <div class="flex items-center gap-2">
                     <input
+                        id="game-code"
                         type="text"
                         value={data.game.code}
                         readonly
@@ -208,11 +211,14 @@
 
             <!-- Join URL -->
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2"
+                <label
+                    for="join-url"
+                    class="block text-sm font-medium text-gray-700 mb-2"
                     >Join URL</label
                 >
                 <div class="flex items-center gap-2">
                     <input
+                        id="join-url"
                         type="text"
                         value={`${data.baseUrl}/game/${data.game.code}/join`}
                         readonly

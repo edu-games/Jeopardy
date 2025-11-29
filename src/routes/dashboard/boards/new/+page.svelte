@@ -43,6 +43,18 @@
     let filteredQuestions = $derived(() => {
         let filtered = data.questions;
 
+        // Get all currently selected question IDs
+        const selectedQuestionIds = new Set(
+            categories.flatMap((cat) =>
+                cat.slots
+                    .map((slot) => slot.questionId)
+                    .filter((id): id is string => id !== null),
+            ),
+        );
+
+        // Filter out already selected questions
+        filtered = filtered.filter((q) => !selectedQuestionIds.has(q.id));
+
         if (questionSearch.trim()) {
             const term = questionSearch.toLowerCase();
             filtered = filtered.filter(
