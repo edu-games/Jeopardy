@@ -134,13 +134,11 @@
                     description: boardDescription.trim() || null,
                     categories: categories.map((cat) => ({
                         name: cat.name.trim(),
-                        slots: cat.slots
-                            .toSorted((a, b) => a.points - b.points)
-                            .map((slot) => ({
-                                questionId: slot.questionId,
-                                points: slot.points,
-                                isDailyDouble: slot.isDailyDouble,
-                            })),
+                        slots: cat.slots.map((slot) => ({
+                            questionId: slot.questionId,
+                            points: slot.points,
+                            isDailyDouble: slot.isDailyDouble,
+                        })),
                     })),
                 }),
             });
@@ -274,7 +272,7 @@
 
                 <!-- Slots -->
                 <div class="space-y-2">
-                    {#each category.slots.toSorted((a, b) => a.points - b.points) as slot, slotIndex}
+                    {#each category.slots.toSorted((a, b) => a.row - b.row) as slot, slotIndex}
                         {@const question = getQuestionById(slot.questionId)}
                         <div
                             class="border rounded-lg p-3 {slot.isDailyDouble
