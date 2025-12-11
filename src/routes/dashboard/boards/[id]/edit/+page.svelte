@@ -272,7 +272,7 @@
 
                 <!-- Slots -->
                 <div class="space-y-2">
-                    {#each category.slots as slot, slotIndex}
+                    {#each category.slots.toSorted((a, b) => a.points - b.points) as slot, slotIndex}
                         {@const question = getQuestionById(slot.questionId)}
                         <div
                             class="border rounded-lg p-3 {slot.isDailyDouble

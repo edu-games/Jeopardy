@@ -14,9 +14,31 @@
         studentName: string;
         teamName: string;
     } | null>(null);
+    let showEndGameConfirm = $state(false);
+    let endingGame = $state(false);
 
     function isSlotAnswered(slotId: string) {
         return answeredSlots.includes(slotId);
+    }
+
+    async function endGame() {
+        endingGame = true;
+
+        try {
+            const response = await fetch(`/api/games/${data.game.id}/end`, {
+                method: "POST",
+            });
+
+            if (response.ok) {
+                window.location.href = "/dashboard/games";
+            } else {
+                alert("Failed to end game");
+                endingGame = false;
+            }
+        } catch (err) {
+            alert("An error occurred while ending the game");
+            endingGame = false;
+        }
     }
 
     async function revealQuestion(slot: any) {
@@ -139,12 +161,24 @@
                         Progress: {answeredCount}/{totalQuestions} questions
                     </p>
                 </div>
-                <a
-                    href="/dashboard/games"
-                    class="px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors"
-                >
-                    End Game
-                </a>
+                <div class="flex gap-3">
+                    {#if data.game.status === "COMPLETED"}
+                        <a
+                            href="/dashboard/games/{data.game.id}/results"
+                            class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium"
+                        >
+                            View Results
+                        </a>
+                    {:else}
+                        <button
+                            type="button"
+                            onclick={() => (showEndGameConfirm = true)}
+                            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                        >
+                            End Game
+                        </button>
+                    {/if}
+                </div>
             </div>
 
             <!-- Team Scores -->
@@ -399,6 +433,57 @@
                         />
                     </svg>
                     Incorrect (-${currentSlot.points})
+                </button>
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- End Game Confirmation Modal -->
+{#if showEndGameConfirm}
+    <div
+        class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
+    >
+        <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="bg-red-100 rounded-full p-3">
+                    <svg
+                        class="w-6 h-6 text-red-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900">End Game?</h3>
+            </div>
+            <p class="text-gray-600 mb-6">
+                Are you sure you want to end this game? This will mark the game
+                as completed and students will no longer be able to play. This
+                action cannot be undone.
+            </p>
+            <div class="flex gap-3">
+                <button
+                    type="button"
+                    onclick={() => (showEndGameConfirm = false)}
+                    disabled={endingGame}
+                    class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="button"
+                    onclick={endGame}
+                    disabled={endingGame}
+                    class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50"
+                >
+                    {endingGame ? "Ending..." : "End Game"}
                 </button>
             </div>
         </div>

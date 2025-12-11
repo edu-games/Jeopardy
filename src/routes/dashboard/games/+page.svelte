@@ -214,6 +214,11 @@
                                     <span class="text-sm font-medium"
                                         >{team.name}</span
                                     >
+                                    {#if game.status === "COMPLETED" || game.status === "IN_PROGRESS"}
+                                        <span class="text-sm text-gray-600"
+                                            >${team.score}</span
+                                        >
+                                    {/if}
                                 </div>
                             {/each}
                         </div>

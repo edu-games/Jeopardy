@@ -121,9 +121,13 @@
                         break;
 
                     case "game-started":
-                    case "game-ended":
-                        // Game status changed
+                        // Game started, reload to show game
                         window.location.reload();
+                        break;
+
+                    case "game-ended":
+                        // Game ended, redirect to results page
+                        window.location.href = `/game/${data.game.code}/results?studentId=${data.student.id}`;
                         break;
                 }
             } catch (error) {
@@ -422,7 +426,14 @@
                 <h3 class="text-2xl font-bold text-white mb-2">
                     Game Complete!
                 </h3>
-                <p class="text-blue-200">Thanks for playing!</p>
+                <p class="text-blue-200 mb-4">Thanks for playing!</p>
+                <a
+                    href="/game/{data.game.code}/results?studentId={data.student
+                        .id}"
+                    class="inline-block px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium"
+                >
+                    View Results
+                </a>
             </div>
         {/if}
     </div>
