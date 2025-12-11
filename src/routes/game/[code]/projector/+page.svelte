@@ -7,6 +7,9 @@
     // Real-time game state
     let answeredSlots = $state(data.game.gameState?.answeredSlots || []);
     let currentSlotData = $state<any>(null);
+    let connectionStatus = $state<"connected" | "connecting" | "disconnected">(
+        "connecting",
+    );
 
     // Get current question slot if one is active
     const currentSlot = $derived(
@@ -34,6 +37,11 @@
     onMount(() => {
         const eventSource = new EventSource(`/api/sse/${data.game.id}`);
 
+        eventSource.onopen = () => {
+            connectionStatus = "connected";
+            console.log("[SSE Projector] Connection opened");
+        };
+
         eventSource.onmessage = (event) => {
             try {
                 const eventData = JSON.parse(event.data);
@@ -41,6 +49,7 @@
 
                 switch (eventData.type) {
                     case "connected":
+                        connectionStatus = "connected";
                         console.log(
                             "[SSE Projector] Connected with client ID:",
                             eventData.clientId,
@@ -74,7 +83,14 @@
 
         eventSource.onerror = (error) => {
             console.error("[SSE Projector] Connection error:", error);
-            eventSource.close();
+            connectionStatus = "disconnected";
+
+            // Try to reconnect after 3 seconds
+            setTimeout(() => {
+                if (eventSource.readyState === EventSource.CLOSED) {
+                    window.location.reload();
+                }
+            }, 3000);
         };
 
         // Cleanup on unmount
@@ -93,15 +109,55 @@
 >
     <div class="flex-1 flex flex-col max-h-screen">
         <!-- Header -->
-        <div class="mb-4 md:mb-6 text-center flex-shrink-0">
-            <h1
-                class="text-3xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-1 md:mb-2"
-            >
-                Jeopardy!
-            </h1>
-            <p class="text-lg md:text-xl lg:text-2xl text-blue-200">
-                {data.game.board.name}
-            </p>
+        <div class="mb-4 md:mb-6 flex-shrink-0">
+            <div class="flex items-start justify-between gap-4">
+                <!-- Center: Title and Connection Status -->
+                <div class="flex-1 text-center">
+                    <!-- Connection Status Indicator -->
+                    <div class="flex items-center justify-center gap-2 mb-2">
+                        {#if connectionStatus === "connected"}
+                            <div
+                                class="w-2 h-2 md:w-3 md:h-3 rounded-full bg-green-400 animate-pulse"
+                                title="Connected"
+                            ></div>
+                            <span class="text-xs text-green-300/80">Live</span>
+                        {:else if connectionStatus === "connecting"}
+                            <div
+                                class="w-2 h-2 md:w-3 md:h-3 rounded-full bg-yellow-400 animate-pulse"
+                                title="Connecting"
+                            ></div>
+                            <span class="text-xs text-yellow-300/80"
+                                >Connecting...</span
+                            >
+                        {:else}
+                            <div
+                                class="w-2 h-2 md:w-3 md:h-3 rounded-full bg-red-400 animate-pulse"
+                                title="Disconnected"
+                            ></div>
+                            <span class="text-xs text-red-300/80"
+                                >Reconnecting...</span
+                            >
+                        {/if}
+                    </div>
+
+                    <h1
+                        class="text-3xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-1 md:mb-2"
+                    >
+                        Jeopardy!
+                    </h1>
+                </div>
+
+                <!-- Right: Game Code -->
+                <div
+                    class="bg-white/10 backdrop-blur-sm rounded-lg p-2 text-right"
+                >
+                    <p
+                        class="text-lg md:text-xl lg:text-2xl font-bold text-white/90 tracking-wider"
+                    >
+                        {data.game.code}
+                    </p>
+                </div>
+            </div>
         </div>
 
         {#if currentSlot && currentCategory}
@@ -172,25 +228,17 @@
                             {#if slot}
                                 <div
                                     class={`
-                                        rounded-lg md:rounded-xl font-bold text-xl md:text-3xl lg:text-5xl transition-all flex items-center justify-center
+                                        rounded-lg md:rounded-xl font-semibold text-xl md:text-3xl lg:text-5xl transition-all flex items-center justify-center
                                         ${
                                             isSlotAnswered(slot.id)
                                                 ? "bg-blue-900/50 text-blue-700"
                                                 : "bg-blue-600 text-yellow-400"
                                         }
-                                        ${slot.isDailyDouble && !isSlotAnswered(slot.id) ? "ring-2 md:ring-4 lg:ring-8 ring-yellow-500" : ""}
                                     `}
                                 >
                                     {#if !isSlotAnswered(slot.id)}
                                         <div class="text-center">
                                             ${slot.points}
-                                            {#if slot.isDailyDouble}
-                                                <div
-                                                    class="text-xs md:text-lg lg:text-2xl mt-1"
-                                                >
-                                                    DD
-                                                </div>
-                                            {/if}
                                         </div>
                                     {:else}
                                         <svg

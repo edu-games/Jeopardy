@@ -150,22 +150,26 @@
     });
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 p-4">
-    <div class="max-w-7xl mx-auto">
+<div
+    class="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex flex-col p-4"
+>
+    <div class="max-w-7xl mx-auto w-full flex flex-col flex-1 min-h-0">
         <!-- Header with Scoreboard -->
-        <div class="mb-6 bg-white/10 backdrop-blur-sm rounded-lg p-4">
-            <div class="flex justify-between items-center mb-4">
+        <div
+            class="mb-3 bg-white/10 backdrop-blur-sm rounded-lg p-3 flex-shrink-0"
+        >
+            <div class="flex justify-between items-center mb-2">
                 <div class="text-white">
-                    <h1 class="text-2xl font-bold">{data.game.board.name}</h1>
-                    <p class="text-blue-200">
+                    <h1 class="text-xl font-bold">{data.game.board.name}</h1>
+                    <p class="text-sm text-blue-200">
                         Progress: {answeredCount}/{totalQuestions} questions
                     </p>
                 </div>
-                <div class="flex gap-3">
+                <div class="flex gap-2">
                     {#if data.game.status === "COMPLETED"}
                         <a
                             href="/dashboard/games/{data.game.id}/results"
-                            class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium"
+                            class="px-3 py-1.5 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium"
                         >
                             View Results
                         </a>
@@ -173,10 +177,10 @@
                         <a
                             href="/game/{data.game.code}/projector"
                             target="_blank"
-                            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center gap-2"
+                            class="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center gap-1.5"
                         >
                             <svg
-                                class="w-5 h-5"
+                                class="w-4 h-4"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -193,7 +197,7 @@
                         <button
                             type="button"
                             onclick={() => (showEndGameConfirm = true)}
-                            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                            class="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
                         >
                             End Game
                         </button>
@@ -202,24 +206,24 @@
             </div>
 
             <!-- Team Scores -->
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
                 {#each teams as team}
                     <div
-                        class="p-4 rounded-lg text-center"
+                        class="p-2 rounded-lg text-center"
                         style={`background-color: ${team.color}20; border: 2px solid ${team.color}`}
                     >
                         <div
-                            class="flex items-center justify-center gap-2 mb-1"
+                            class="flex items-center justify-center gap-1.5 mb-0.5"
                         >
                             <div
-                                class="w-3 h-3 rounded-full"
+                                class="w-2 h-2 rounded-full"
                                 style={`background-color: ${team.color}`}
                             ></div>
-                            <p class="font-semibold text-white text-sm">
+                            <p class="font-semibold text-white text-xs">
                                 {team.name}
                             </p>
                         </div>
-                        <p class="text-2xl font-bold text-white">
+                        <p class="text-xl font-bold text-white">
                             ${team.score}
                         </p>
                         <p class="text-xs text-blue-200">
@@ -231,9 +235,9 @@
         </div>
 
         <!-- Jeopardy Board -->
-        <div class="bg-blue-800 rounded-lg p-4 shadow-2xl">
+        <div class="bg-blue-800 rounded-lg p-4 shadow-2xl flex flex-col flex-1">
             <!-- Category Headers -->
-            <div class="grid grid-cols-6 gap-2 mb-2">
+            <div class="grid grid-cols-6 gap-2 mb-2 flex-shrink-0">
                 {#each data.game.board.categories as category}
                     <div class="bg-blue-900 p-4 rounded-lg text-center">
                         <h3
@@ -246,7 +250,7 @@
             </div>
 
             <!-- Question Grid -->
-            <div class="grid grid-cols-6 gap-2">
+            <div class="grid grid-cols-6 gap-2 flex-1">
                 {#each Array.from({ length: 5 }, (_, rowIndex) => rowIndex) as rowIndex}
                     {#each data.game.board.categories as category}
                         {@const slot = category.slots.find(
@@ -258,7 +262,7 @@
                                 onclick={() => revealQuestion(slot)}
                                 disabled={isSlotAnswered(slot.id)}
                                 class={`
-								aspect-square p-4 rounded-lg font-bold text-2xl transition-all
+								p-4 rounded-lg font-bold text-2xl transition-all flex items-center justify-center
 								${
                                     isSlotAnswered(slot.id)
                                         ? "bg-blue-900/50 text-blue-700 cursor-not-allowed"

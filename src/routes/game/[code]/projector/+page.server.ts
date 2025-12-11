@@ -1,8 +1,9 @@
 import { error } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import prisma from "$lib/server/prisma";
+import { generateGameQRCode } from "$lib/server/qr";
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, url }) => {
   const gameCode = params.code;
 
   // Load game data
@@ -32,7 +33,11 @@ export const load: PageServerLoad = async ({ params }) => {
     throw error(404, "Game not found");
   }
 
+  // Generate QR code with dynamic base URL
+  const baseUrl = `${url.protocol}//${url.host}`;
+
   return {
     game,
+    baseUrl,
   };
 };
