@@ -93,13 +93,14 @@ model BoardQuestionSlot {
   category      Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   questionId    String
   question      Question @relation(fields: [questionId], references: [id])
-  position      Int      // 0-4 (row position in category)
+  row           Int      // 0-4 (row position, 0 at top)
+  column        Int      // 0-5 (column position, derived from category order)
   points        Int      // Point value for this position (200, 400, 600, 800, 1000)
   isDailyDouble Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  @@unique([categoryId, position])
+  @@unique([categoryId, row])
 }
 
 model Game {

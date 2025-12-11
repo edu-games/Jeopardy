@@ -134,11 +134,13 @@
                     description: boardDescription.trim() || null,
                     categories: categories.map((cat) => ({
                         name: cat.name.trim(),
-                        slots: cat.slots.map((slot) => ({
-                            questionId: slot.questionId,
-                            points: slot.points,
-                            isDailyDouble: slot.isDailyDouble,
-                        })),
+                        slots: cat.slots
+                            .toSorted((a, b) => a.points - b.points)
+                            .map((slot) => ({
+                                questionId: slot.questionId,
+                                points: slot.points,
+                                isDailyDouble: slot.isDailyDouble,
+                            })),
                     })),
                 }),
             });

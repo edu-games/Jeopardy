@@ -228,7 +228,7 @@
             <!-- Question Grid -->
             <div class="grid grid-cols-6 gap-2">
                 {#each data.game.board.categories as category}
-                    {#each category.slots.toSorted((a, b) => a.points - b.points) as slot}
+                    {#each category.slots.toSorted((a, b) => a.row - b.row) as slot}
                         <button
                             type="button"
                             onclick={() => revealQuestion(slot)}

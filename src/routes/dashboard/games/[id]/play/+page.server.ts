@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
                   question: true,
                 },
                 orderBy: {
-                  position: "asc",
+                  row: "asc",
                 },
               },
             },
