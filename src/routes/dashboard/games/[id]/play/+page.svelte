@@ -6,6 +6,7 @@
 
     // Local state for real-time updates
     let teams = $state(data.game.teams);
+    let connectedStudents = $state(new Set<string>());
     let answeredSlots = $state(data.game.gameState?.answeredSlots ? JSON.parse(data.game.gameState.answeredSlots as unknown as string) : []);
     let currentSlot = $state<any>(null);
     let selectedTeamId = $state("");
@@ -78,6 +79,14 @@
                         selectedTeamId = "";
                         submittingAnswer = false;
                         break;
+
+                    case "student-status": {
+                        const next = new Set(connectedStudents);
+                        if (msg.connected) next.add(msg.studentId);
+                        else next.delete(msg.studentId);
+                        connectedStudents = next;
+                        break;
+                    }
 
                     case "game-ended":
                         window.location.href = "/dashboard/games";
@@ -173,7 +182,7 @@
                             ${team.score}
                         </p>
                         <p class="text-xs text-blue-200">
-                            {team.students.length} students
+                            {team.students.filter(s => connectedStudents.has(s.id)).length}/{team.students.length} online
                         </p>
                     </div>
                 {/each}

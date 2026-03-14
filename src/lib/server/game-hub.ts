@@ -34,6 +34,10 @@ export class GameHub implements DurableObject {
 			this.state.acceptWebSocket(server, [role, gameId, instructorId, studentId]);
 			server.send(JSON.stringify({ type: "connected", role, gameId }));
 
+			if (role === "student" && studentId) {
+				this.broadcast({ type: "student-status", studentId, connected: true });
+			}
+
 			return new Response(null, { status: 101, webSocket: client });
 		}
 
@@ -50,8 +54,7 @@ export class GameHub implements DurableObject {
 	// ── Hibernation API callbacks ──────────────────────────────────────────────
 
 	async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
-		const tags = ws.deserializeAttachment() as string[] | null ?? (ws as any).tags as string[];
-		const [role, gameId, instructorId, studentId] = tags;
+		const [role, gameId, instructorId, studentId] = this.state.getTags(ws);
 		const db = getDb(this.env.DB);
 
 		let event: { type: string; [key: string]: unknown };
@@ -94,8 +97,11 @@ export class GameHub implements DurableObject {
 		}
 	}
 
-	async webSocketClose(_ws: WebSocket, _code: number, _reason: string): Promise<void> {
-		// Hibernation handles cleanup automatically
+	async webSocketClose(ws: WebSocket, _code: number, _reason: string): Promise<void> {
+		const [role, , , studentId] = this.state.getTags(ws);
+		if (role === "student" && studentId) {
+			this.broadcast({ type: "student-status", studentId, connected: false });
+		}
 	}
 
 	async webSocketError(_ws: WebSocket, error: unknown): Promise<void> {

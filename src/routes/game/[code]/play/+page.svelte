@@ -5,11 +5,13 @@
     let { data }: { data: PageData } = $props();
 
     let buzzerPressed = $state(false);
-    let buzzerError = $state("");
     let pressingBuzzer = $state(false);
+    let buzzerError = $state("");
+    let wsConnected = $state(false);
 
     // Real-time game state
     let teams = $state(data.game.teams);
+    let gameStatus = $state(data.game.status);
     let gameState = $state(data.game.gameState);
     let currentSlotData = $state<any>(null);
     let ws: WebSocket | null = null;
@@ -33,6 +35,7 @@
 
     const buzzerEnabled = $derived(gameState?.buzzerEnabled || false);
     const myTeam = $derived(teams.find((t) => t.id === data.student.team?.id));
+    const sortedTeams = $derived([...teams].sort((a, b) => b.score - a.score));
 
     function pressBuzzer() {
         if (!buzzerEnabled || buzzerPressed || pressingBuzzer || !ws) return;
@@ -45,6 +48,8 @@
         ws = new WebSocket(
             `/api/ws/${data.game.id}?role=student&studentId=${data.student.id}`
         );
+
+        ws.onopen = () => { wsConnected = true; };
 
         ws.onmessage = (event) => {
             try {
@@ -75,22 +80,28 @@
                         break;
 
                     case "buzzer-pressed":
-                        // If this student buzzed in successfully
                         if (msg.studentId === data.student.id) {
                             buzzerPressed = true;
                         }
+                        pressingBuzzer = false;
+                        if (gameState) gameState.buzzerEnabled = false;
+                        break;
+
+                    case "buzzer-enabled":
+                        if (gameState) gameState.buzzerEnabled = true;
+                        buzzerPressed = false;
                         pressingBuzzer = false;
                         break;
 
                     case "error":
                         if (pressingBuzzer) {
-                            buzzerError = msg.message || "Failed to press buzzer";
+                            buzzerError = msg.message || "Too slow!";
                             pressingBuzzer = false;
                         }
                         break;
 
                     case "game-started":
-                        window.location.reload();
+                        gameStatus = "IN_PROGRESS";
                         break;
 
                     case "game-ended":
@@ -102,304 +113,180 @@
             }
         };
 
+        ws.onclose = () => {
+            wsConnected = false;
+            // Reconnect after a short delay
+            setTimeout(connect, 2000);
+        };
+
         ws.onerror = () => {
-            buzzerError = "Connection error. Please reload.";
             pressingBuzzer = false;
         };
     }
 
     onMount(connect);
-    onDestroy(() => ws?.close());
+    onDestroy(() => {
+        ws?.close();
+        ws = null;
+    });
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 p-4">
-    <div class="max-w-4xl mx-auto">
-        <!-- Header with Student Info -->
-        <div class="mb-6 bg-white/10 backdrop-blur-sm rounded-lg p-6">
-            <div class="text-center">
-                <h1 class="text-3xl font-bold text-white mb-2">Jeopardy!</h1>
-                <p class="text-blue-200 text-lg">
-                    Welcome, {data.student.name}!
-                </p>
-            </div>
+<div class="h-dvh flex flex-col bg-blue-950 overflow-hidden select-none">
+
+    <!-- Top bar: name + team + score -->
+    <div class="flex items-center justify-between px-4 py-3 bg-blue-900 border-b border-blue-800 shrink-0">
+        <div class="flex items-center gap-2 min-w-0">
+            {#if myTeam}
+                <div class="w-3 h-3 rounded-full shrink-0" style="background-color: {myTeam.color}"></div>
+                <span class="text-white font-semibold text-sm truncate">{myTeam.name}</span>
+            {:else}
+                <span class="text-blue-300 text-sm">No team yet</span>
+            {/if}
         </div>
+        <div class="text-center">
+            <p class="text-blue-200 text-xs leading-none">JEOPARDY!</p>
+            <p class="text-white text-sm font-medium truncate max-w-32">{data.student.name}</p>
+        </div>
+        <div class="text-right">
+            {#if myTeam}
+                <p class="text-yellow-400 font-bold text-xl leading-none">${myTeam.score.toLocaleString()}</p>
+            {:else}
+                <p class="text-blue-600 text-xl">—</p>
+            {/if}
+        </div>
+    </div>
 
-        <!-- Team Info -->
-        {#if myTeam}
-            <div
-                class="mb-6 p-6 rounded-lg"
-                style={`background-color: ${myTeam.color}20; border: 3px solid ${myTeam.color}`}
-            >
-                <div class="text-center">
-                    <div class="flex items-center justify-center gap-3 mb-3">
-                        <div
-                            class="w-6 h-6 rounded-full"
-                            style={`background-color: ${myTeam.color}`}
-                        ></div>
-                        <h2 class="text-2xl font-bold text-white">
-                            {myTeam.name}
-                        </h2>
-                    </div>
-                    <div class="text-5xl font-bold text-white mb-2">
-                        ${myTeam.score}
-                    </div>
-                    <p class="text-blue-200">Your Team's Score</p>
-                </div>
-            </div>
-        {:else}
-            <div
-                class="mb-6 p-6 bg-yellow-50 border-3 border-yellow-300 rounded-lg"
-            >
-                <p class="text-yellow-800 font-medium text-center text-lg">
-                    ⏳ Waiting for team assignment
-                </p>
-                <p class="text-sm text-yellow-700 mt-2 text-center">
-                    The instructor will assign you to a team shortly
-                </p>
-            </div>
-        {/if}
+    <!-- Main content -->
+    <div class="flex-1 flex flex-col justify-center px-4 py-4 overflow-hidden">
 
-        <!-- Game Status -->
-        {#if data.game.status === "LOBBY"}
-            <div
-                class="bg-white/10 backdrop-blur-sm rounded-lg p-8 text-center"
-            >
-                <div class="animate-pulse mb-4">
-                    <svg
-                        class="w-16 h-16 mx-auto text-blue-300"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
+        {#if gameStatus === "LOBBY"}
+            <!-- Waiting for game to start -->
+            <div class="text-center">
+                <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-blue-800 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-blue-300 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
-                <h3 class="text-2xl font-bold text-white mb-2">
-                    Game Starting Soon
-                </h3>
-                <p class="text-blue-200">
-                    Wait for the instructor to start the game. Stay on this
-                    page!
-                </p>
+                <h2 class="text-2xl font-bold text-white mb-2">You're in!</h2>
+                <p class="text-blue-300">Waiting for the game to start...</p>
+                {#if !myTeam}
+                    <p class="text-yellow-400 text-sm mt-4">The instructor will assign you to a team</p>
+                {/if}
             </div>
-        {:else if data.game.status === "IN_PROGRESS"}
-            <!-- Current Question Info -->
+
+        {:else if gameStatus === "IN_PROGRESS"}
+
             {#if currentSlot && currentCategory}
-                <div class="mb-6 bg-blue-800 rounded-lg p-6">
-                    <div class="text-center mb-4">
-                        <div class="text-yellow-400 font-semibold text-lg mb-1">
-                            {currentCategory.name}
-                        </div>
-                        <div class="text-4xl font-bold text-yellow-400">
-                            ${currentSlot.points}
-                        </div>
+                <!-- Active question -->
+                <div class="flex flex-col gap-3 h-full justify-between">
+                    <!-- Question info -->
+                    <div class="bg-blue-900 rounded-2xl p-4 text-center">
+                        <p class="text-yellow-400 font-semibold text-xs uppercase tracking-widest mb-1">{currentCategory.name}</p>
+                        <p class="text-yellow-400 font-bold text-3xl">${currentSlot.points}</p>
                         {#if currentSlot.isDailyDouble}
-                            <div
-                                class="mt-3 inline-block px-4 py-2 bg-yellow-500 text-blue-900 rounded-full text-sm font-bold"
-                            >
-                                DAILY DOUBLE
-                            </div>
+                            <span class="inline-block mt-2 px-3 py-1 bg-yellow-500 text-blue-950 rounded-full text-xs font-black uppercase tracking-wide">Daily Double</span>
                         {/if}
                     </div>
 
-                    <!-- Clue Display -->
-                    <div class="bg-blue-700 rounded-lg p-6 mb-4">
-                        <p
-                            class="text-sm text-blue-300 mb-2 uppercase tracking-wide text-center"
-                        >
-                            Clue
-                        </p>
-                        <p class="text-xl text-white text-center">
-                            {currentSlot.question.answer}
-                        </p>
+                    <!-- Clue -->
+                    <div class="bg-blue-800 rounded-2xl p-5 flex-1 flex items-center justify-center">
+                        <p class="text-white text-xl text-center leading-relaxed">{currentSlot.question.answer}</p>
                     </div>
 
-                    <!-- Buzzer Button -->
+                    <!-- Buzzer area -->
                     {#if buzzerEnabled && !buzzerPressed}
-                        <button
-                            type="button"
-                            onclick={pressBuzzer}
-                            disabled={pressingBuzzer}
-                            class="w-full py-12 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-lg font-bold text-4xl transition-all shadow-2xl disabled:bg-gray-600 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95"
-                        >
-                            {#if pressingBuzzer}
-                                <svg
-                                    class="animate-spin h-12 w-12 mx-auto"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <circle
-                                        class="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        stroke-width="4"
-                                    ></circle>
-                                    <path
-                                        class="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                    ></path>
-                                </svg>
-                            {:else}
-                                🔴 BUZZ IN!
-                            {/if}
-                        </button>
-
-                        {#if buzzerError}
-                            <div
-                                class="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded"
+                        <div class="flex flex-col gap-2">
+                            <button
+                                type="button"
+                                onclick={pressBuzzer}
+                                disabled={pressingBuzzer}
+                                class="w-full py-10 rounded-2xl font-black text-3xl tracking-wide transition-all active:scale-95 shadow-2xl
+                                    {pressingBuzzer
+                                        ? 'bg-red-800 text-red-400 cursor-not-allowed'
+                                        : 'bg-red-600 active:bg-red-700 text-white'}"
                             >
-                                {buzzerError}
-                            </div>
-                        {/if}
-                    {:else if buzzerPressed}
-                        <div class="bg-green-600 rounded-lg p-8 text-center">
-                            <svg
-                                class="w-16 h-16 mx-auto text-white mb-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
-                            <h3 class="text-2xl font-bold text-white mb-2">
-                                You Buzzed In!
-                            </h3>
-                            <p class="text-green-100">
-                                Wait for the instructor to call on your team.
-                            </p>
-                        </div>
-                    {:else}
-                        <div class="bg-gray-600 rounded-lg p-8 text-center">
-                            <svg
-                                class="w-16 h-16 mx-auto text-gray-400 mb-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                />
-                            </svg>
-                            <h3 class="text-xl font-bold text-white mb-2">
-                                Buzzer Locked
-                            </h3>
-                            <p class="text-gray-300">
-                                {#if currentSlot.isDailyDouble}
-                                    This is a Daily Double. Your team cannot
-                                    buzz in.
+                                {#if pressingBuzzer}
+                                    <svg class="animate-spin h-8 w-8 mx-auto" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
                                 {:else}
-                                    Wait for the instructor to unlock the
-                                    buzzer.
+                                    BUZZ IN
                                 {/if}
+                            </button>
+                            {#if buzzerError}
+                                <p class="text-red-400 text-center text-sm">{buzzerError}</p>
+                            {/if}
+                        </div>
+
+                    {:else if buzzerPressed}
+                        <div class="w-full py-10 rounded-2xl bg-green-600 text-center">
+                            <p class="text-white font-black text-3xl">YOU'RE IN!</p>
+                            <p class="text-green-200 text-sm mt-1">Wait for the instructor</p>
+                        </div>
+
+                    {:else}
+                        <div class="w-full py-8 rounded-2xl bg-blue-900 text-center">
+                            <p class="text-blue-400 font-bold text-xl">
+                                {currentSlot.isDailyDouble ? "Daily Double — no buzzer" : "Buzzer locked"}
                             </p>
                         </div>
                     {/if}
                 </div>
+
             {:else}
-                <div
-                    class="bg-white/10 backdrop-blur-sm rounded-lg p-8 text-center"
-                >
-                    <div class="animate-pulse mb-4">
-                        <svg
-                            class="w-16 h-16 mx-auto text-blue-300"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
+                <!-- Waiting for next question -->
+                <div class="text-center">
+                    <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-blue-800 flex items-center justify-center">
+                        <svg class="w-10 h-10 text-blue-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <h3 class="text-2xl font-bold text-white mb-2">
-                        Waiting for Next Question
-                    </h3>
-                    <p class="text-blue-200">
-                        The instructor will select a question shortly.
-                    </p>
+                    <h2 class="text-xl font-bold text-white mb-1">Get Ready</h2>
+                    <p class="text-blue-300 text-sm">Waiting for the next question...</p>
                 </div>
             {/if}
 
-            <!-- All Teams Scoreboard -->
-            <div class="mt-6 bg-white/10 backdrop-blur-sm rounded-lg p-6">
-                <h3 class="text-xl font-bold text-white mb-4 text-center">
-                    All Teams
-                </h3>
-                <div class="grid grid-cols-2 gap-3">
-                    {#each teams as team (team.id)}
-                        <div
-                            class="p-4 rounded-lg text-center {team.id ===
-                            myTeam?.id
-                                ? 'ring-4 ring-white'
-                                : ''}"
-                            style={`background-color: ${team.color}30; border: 2px solid ${team.color}`}
-                        >
-                            <div
-                                class="flex items-center justify-center gap-2 mb-1"
-                            >
-                                <div
-                                    class="w-3 h-3 rounded-full"
-                                    style={`background-color: ${team.color}`}
-                                ></div>
-                                <p class="font-semibold text-white text-sm">
-                                    {team.name}
-                                </p>
-                            </div>
-                            <p class="text-2xl font-bold text-white">
-                                ${team.score}
-                            </p>
-                        </div>
-                    {/each}
-                </div>
-            </div>
-        {:else if data.game.status === "COMPLETED"}
-            <div
-                class="bg-white/10 backdrop-blur-sm rounded-lg p-8 text-center"
-            >
-                <svg
-                    class="w-16 h-16 mx-auto text-yellow-400 mb-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-                    />
-                </svg>
-                <h3 class="text-2xl font-bold text-white mb-2">
-                    Game Complete!
-                </h3>
-                <p class="text-blue-200 mb-4">Thanks for playing!</p>
+        {:else if gameStatus === "COMPLETED"}
+            <div class="text-center">
+                <div class="text-6xl mb-4">🏆</div>
+                <h2 class="text-2xl font-bold text-white mb-2">Game over!</h2>
+                <p class="text-blue-300 mb-6">Thanks for playing</p>
                 <a
-                    href="/game/{data.game.code}/results?studentId={data.student
-                        .id}"
-                    class="inline-block px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium"
+                    href="/game/{data.game.code}/results?studentId={data.student.id}"
+                    class="inline-block px-8 py-4 bg-yellow-500 text-blue-950 rounded-2xl font-bold text-lg"
                 >
-                    View Results
+                    See Results
                 </a>
             </div>
         {/if}
+
     </div>
+
+    <!-- Score strip -->
+    {#if gameStatus === "IN_PROGRESS"}
+        <div class="shrink-0 bg-blue-900 border-t border-blue-800 px-3 py-2">
+            <div class="flex gap-2 overflow-x-auto scrollbar-none">
+                {#each sortedTeams as team (team.id)}
+                    <div
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0 text-sm
+                            {team.id === myTeam?.id ? 'ring-2 ring-white' : ''}"
+                        style="background-color: {team.color}25; border: 1.5px solid {team.color}"
+                    >
+                        <div class="w-2 h-2 rounded-full shrink-0" style="background-color: {team.color}"></div>
+                        <span class="text-white font-medium">{team.name}</span>
+                        <span class="text-yellow-400 font-bold">${team.score.toLocaleString()}</span>
+                    </div>
+                {/each}
+            </div>
+        </div>
+    {/if}
+
+    <!-- Connection indicator -->
+    {#if !wsConnected}
+        <div class="absolute bottom-0 left-0 right-0 bg-red-900/90 text-red-200 text-xs text-center py-1.5">
+            Reconnecting...
+        </div>
+    {/if}
+
 </div>

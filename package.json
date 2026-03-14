@@ -12,7 +12,9 @@
     "db:migrate:local": "wrangler d1 migrations apply jeopardy-db --local",
     "db:migrate:prod": "wrangler d1 migrations apply jeopardy-db --remote",
     "cf:dev": "wrangler pages dev",
-    "cf:deploy": "wrangler pages deploy"
+    "cf:deploy:do": "wrangler deploy --config wrangler.worker.json",
+    "cf:deploy:pages": "wrangler pages deploy",
+    "cf:deploy": "npm run cf:deploy:do && npm run cf:deploy:pages"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241205.0",

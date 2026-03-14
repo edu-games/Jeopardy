@@ -10,6 +10,7 @@
     // Real-time state
     let teams = $state(data.game.teams);
     let students = $state(data.game.students);
+    let connectedStudents = $state(new Set<string>());
 
     // Get unassigned students
     let unassignedStudents = $derived(students.filter((s) => !s.teamId));
@@ -62,6 +63,14 @@
                         students = msg.students;
                         teams = msg.teams;
                         break;
+
+                    case "student-status": {
+                        const next = new Set(connectedStudents);
+                        if (msg.connected) next.add(msg.studentId);
+                        else next.delete(msg.studentId);
+                        connectedStudents = next;
+                        break;
+                    }
 
                     case "game-started":
                         window.location.href = `/dashboard/games/${data.game.id}/play`;
@@ -267,9 +276,8 @@
                     {#if team.students.length > 0}
                         <div class="flex flex-wrap gap-2">
                             {#each team.students as student}
-                                <div
-                                    class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm"
-                                >
+                                <div class="flex items-center gap-1.5 px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
+                                    <div class="w-2 h-2 rounded-full shrink-0 {connectedStudents.has(student.id) ? 'bg-green-500' : 'bg-gray-400'}"></div>
                                     {student.name}
                                 </div>
                             {/each}
@@ -295,9 +303,10 @@
                             <div
                                 class="flex items-center justify-between bg-white p-3 rounded-lg"
                             >
-                                <span class="font-medium text-gray-900"
-                                    >{student.name}</span
-                                >
+                                <div class="flex items-center gap-1.5">
+                                    <div class="w-2 h-2 rounded-full shrink-0 {connectedStudents.has(student.id) ? 'bg-green-500' : 'bg-gray-400'}"></div>
+                                    <span class="font-medium text-gray-900">{student.name}</span>
+                                </div>
                                 <div class="flex gap-2">
                                     {#each teams as team}
                                         <button
