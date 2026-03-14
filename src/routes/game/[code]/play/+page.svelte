@@ -98,6 +98,7 @@
                         gameStatus = "IN_PROGRESS";
                         break;
                     case "game-ended":
+                        localStorage.removeItem(storageKey);
                         window.location.href = `/game/${data.game.code}/results?studentId=${data.student.id}`;
                         break;
                 }
@@ -114,7 +115,14 @@
         ws.onerror = () => { pressingBuzzer = false; };
     }
 
-    onMount(connect);
+    const storageKey = `jeopardy_session_${data.game.code}`;
+
+    onMount(() => {
+        // Persist session so the join page can redirect back here on reconnect
+        localStorage.setItem(storageKey, JSON.stringify({ studentId: data.student.id, name: data.student.name }));
+        connect();
+    });
+
     onDestroy(() => {
         if (reconnectTimer) clearTimeout(reconnectTimer);
         if (ws) { ws.onclose = null; ws.close(); }

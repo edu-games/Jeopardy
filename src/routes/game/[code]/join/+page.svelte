@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 
 	let name = $state('');
 	let joining = $state(false);
@@ -8,7 +9,24 @@
 	let assignedTeam = $state<any>(null);
 	let gameId = $state('');
 
-	const gameCode = $page.params.code;
+	const gameCode = $page.params.code.toUpperCase();
+	const storageKey = `jeopardy_session_${gameCode}`;
+
+	onMount(() => {
+		// If we already have a session for this game, go straight back to play
+		const saved = localStorage.getItem(storageKey);
+		if (saved) {
+			try {
+				const { studentId } = JSON.parse(saved);
+				if (studentId) {
+					window.location.href = `/game/${gameCode}/play?studentId=${studentId}`;
+					return;
+				}
+			} catch {
+				localStorage.removeItem(storageKey);
+			}
+		}
+	});
 
 	async function joinGame() {
 		if (!name.trim()) {
@@ -26,7 +44,7 @@
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					gameCode: gameCode.toUpperCase(),
+					gameCode,
 					name: name.trim()
 				})
 			});
@@ -36,6 +54,9 @@
 				assignedTeam = data.student.team;
 				gameId = data.gameId;
 				success = true;
+
+				// Save session so they can reconnect if they close the window
+				localStorage.setItem(storageKey, JSON.stringify({ studentId: data.student.id, name: name.trim() }));
 
 				// Auto-redirect to play page after 2 seconds
 				setTimeout(() => {
