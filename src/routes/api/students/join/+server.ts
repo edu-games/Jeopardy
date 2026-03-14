@@ -1,110 +1,77 @@
 import { json, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import prisma from "$lib/server/prisma";
-import { broadcastToGame } from "$lib/server/realtime";
+import { getDb } from "$lib/server/db";
+import { students } from "$lib/server/schema";
+import { eq } from "drizzle-orm";
+import { createId } from "@paralleldrive/cuid2";
 
-// POST /api/students/join - Join a game
-export const POST: RequestHandler = async ({ request }) => {
-  const data = await request.json();
-  const { gameCode, name } = data;
+export const POST: RequestHandler = async ({ request, platform }) => {
+	const data = await request.json();
+	const { gameCode, name } = data;
 
-  // Validation
-  if (!gameCode || typeof gameCode !== "string") {
-    throw error(400, "Game code is required");
-  }
+	if (!gameCode || typeof gameCode !== "string") throw error(400, "Game code is required");
+	if (!name || typeof name !== "string" || name.trim().length === 0) throw error(400, "Name is required");
 
-  if (!name || typeof name !== "string" || name.trim().length === 0) {
-    throw error(400, "Name is required");
-  }
+	const db = getDb(platform!.env.DB);
 
-  // Find game by code
-  const game = await prisma.game.findUnique({
-    where: { code: gameCode.toUpperCase() },
-    include: {
-      teams: {
-        include: {
-          students: true,
-        },
-      },
-    },
-  });
+	const game = await db.query.games.findFirst({
+		where: (g, { eq }) => eq(g.code, gameCode.toUpperCase()),
+		with: { teams: { with: { students: true } } }
+	});
 
-  if (!game) {
-    throw error(404, "Game not found. Please check the game code.");
-  }
+	if (!game) throw error(404, "Game not found. Please check the game code.");
+	if (game.status !== "LOBBY") throw error(400, "Game has already started. Cannot join now.");
 
-  if (game.status !== "LOBBY") {
-    throw error(400, "Game has already started. Cannot join now.");
-  }
+	const existing = await db.query.students.findFirst({
+		where: (s, { eq, and }) => and(eq(s.gameId, game.id), eq(s.name, name.trim()))
+	});
+	if (existing) throw error(400, "Name is already taken. Please choose a different name.");
 
-  // Check if name is already taken in this game
-  const existingStudent = await prisma.student.findFirst({
-    where: {
-      gameId: game.id,
-      name: name.trim(),
-    },
-  });
+	const now = new Date().toISOString();
+	const studentId = createId();
+	let teamId: string | null = null;
 
-  if (existingStudent) {
-    throw error(400, "Name is already taken. Please choose a different name.");
-  }
+	if (game.teamAssignment === "RANDOM") {
+		const teamCounts = game.teams.map((t) => ({ id: t.id, count: t.students.length }));
+		teamCounts.sort((a, b) => a.count - b.count);
+		teamId = teamCounts[0].id;
+	}
 
-  // Create student
-  let student;
-  if (game.teamAssignment === "RANDOM") {
-    // Auto-assign to team with fewest students
-    const teamCounts = game.teams.map((team) => ({
-      id: team.id,
-      count: team.students.length,
-    }));
-    teamCounts.sort((a, b) => a.count - b.count);
-    const teamId = teamCounts[0].id;
+	await db.insert(students).values({
+		id: studentId,
+		name: name.trim(),
+		gameId: game.id,
+		teamId,
+		createdAt: now,
+		updatedAt: now
+	});
 
-    student = await prisma.student.create({
-      data: {
-        name: name.trim(),
-        gameId: game.id,
-        teamId,
-      },
-      include: {
-        team: true,
-      },
-    });
-  } else {
-    // Manual assignment - create without team
-    student = await prisma.student.create({
-      data: {
-        name: name.trim(),
-        gameId: game.id,
-      },
-    });
-  }
+	const student = await db.query.students.findFirst({
+		where: (s, { eq }) => eq(s.id, studentId),
+		with: { team: true }
+	});
 
-  // Get updated students and teams to broadcast
-  const updatedGame = await prisma.game.findUnique({
-    where: { id: game.id },
-    include: {
-      students: {
-        include: {
-          team: true,
-        },
-      },
-      teams: {
-        include: {
-          students: true,
-        },
-      },
-    },
-  });
+	// Broadcast student-joined via the GameHub DO
+	try {
+		const hub = platform!.env.GAME_HUB;
+		const stub = hub.get(hub.idFromName(game.id));
+		const updatedGame = await db.query.games.findFirst({
+			where: (g, { eq }) => eq(g.id, game.id),
+			with: {
+				students: { with: { team: true } },
+				teams: { with: { students: true } }
+			}
+		});
+		if (updatedGame) {
+			await stub.fetch("http://internal/broadcast", {
+				method: "POST",
+				body: JSON.stringify({ type: "student-joined", students: updatedGame.students, teams: updatedGame.teams }),
+				headers: { "Content-Type": "application/json" }
+			});
+		}
+	} catch {
+		// Broadcast failure is non-fatal
+	}
 
-  // Broadcast student-joined event to all connected clients
-  if (updatedGame) {
-    broadcastToGame(game.id, {
-      type: "student-joined",
-      students: updatedGame.students,
-      teams: updatedGame.teams,
-    });
-  }
-
-  return json({ student, gameId: game.id }, { status: 201 });
+	return json({ student, gameId: game.id }, { status: 201 });
 };

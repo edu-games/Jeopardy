@@ -1,30 +1,18 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import prisma from '$lib/server/prisma';
+import { json, error } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import { getDb } from "$lib/server/db";
 
-// GET /api/questions/export - Export all questions as JSON
-export const GET: RequestHandler = async ({ locals }) => {
-	if (!locals.instructor) {
-		throw error(401, 'Unauthorized');
-	}
+export const GET: RequestHandler = async ({ locals, platform }) => {
+	if (!locals.instructor) throw error(401, "Unauthorized");
 
-	const questions = await prisma.question.findMany({
-		where: {
-			instructorId: locals.instructor.id
-		},
-		include: {
-			tags: {
-				include: {
-					tag: true
-				}
-			}
-		},
-		orderBy: {
-			createdAt: 'desc'
-		}
+	const db = getDb(platform!.env.DB);
+
+	const questions = await db.query.questions.findMany({
+		where: (q, { eq }) => eq(q.instructorId, locals.instructor!.id),
+		with: { tags: { with: { tag: true } } },
+		orderBy: (q, { desc }) => [desc(q.createdAt)]
 	});
 
-	// Format for export
 	const exportData = questions.map((q) => ({
 		answer: q.answer,
 		question: q.question,
@@ -32,9 +20,9 @@ export const GET: RequestHandler = async ({ locals }) => {
 	}));
 
 	return json({
-		version: '1.0',
+		version: "1.0",
 		exportedAt: new Date().toISOString(),
-		instructor: locals.instructor.email,
+		instructor: locals.instructor!.email,
 		count: exportData.length,
 		questions: exportData
 	});

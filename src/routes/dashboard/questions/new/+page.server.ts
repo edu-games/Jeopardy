@@ -1,83 +1,62 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { getDb } from '$lib/server/db';
+import * as schema from '$lib/server/schema';
+import { eq, asc } from 'drizzle-orm';
+import { createId } from '@paralleldrive/cuid2';
 import type { Actions, PageServerLoad } from './$types';
-import prisma from '$lib/server/prisma';
 
-export const load: PageServerLoad = async () => {
-	// Get all tags for selection
-	const tags = await prisma.tag.findMany({
-		orderBy: {
-			name: 'asc'
-		}
+export const load: PageServerLoad = async ({ platform }) => {
+	const db = getDb(platform!.env.DB);
+	const tags = await db.query.tags.findMany({
+		orderBy: [asc(schema.tags.name)],
 	});
-
-	return {
-		tags
-	};
+	return { tags };
 };
 
 export const actions = {
-	default: async ({ locals, request }) => {
+	default: async ({ locals, request, platform }) => {
 		const data = await request.formData();
 		const answer = data.get('answer');
 		const question = data.get('question');
 		const tagInput = data.get('tags');
 		const newTags = data.get('newTags');
 
-		// Validation
 		if (!answer || typeof answer !== 'string' || answer.trim().length === 0) {
-			return fail(400, {
-				error: 'Answer is required',
-				answer: '',
-				question: question?.toString() || ''
-			});
+			return fail(400, { error: 'Answer is required', answer: '', question: question?.toString() || '' });
 		}
-
 		if (!question || typeof question !== 'string' || question.trim().length === 0) {
-			return fail(400, {
-				error: 'Question is required',
-				answer,
-				question: ''
-			});
+			return fail(400, { error: 'Question is required', answer, question: '' });
 		}
 
-		// Parse selected tags
+		const db = getDb(platform!.env.DB);
 		const selectedTagIds = tagInput ? tagInput.toString().split(',').filter(Boolean) : [];
-
-		// Parse and create new tags
 		const newTagNames = newTags
-			? newTags
-					.toString()
-					.split(',')
-					.map((t) => t.trim())
-					.filter(Boolean)
+			? newTags.toString().split(',').map((t) => t.trim()).filter(Boolean)
 			: [];
 
 		const createdTagIds: string[] = [];
 		for (const tagName of newTagNames) {
-			const tag = await prisma.tag.upsert({
-				where: { name: tagName },
-				update: {},
-				create: { name: tagName }
-			});
-			createdTagIds.push(tag.id);
+			await db.insert(schema.tags).values({ id: createId(), name: tagName }).onConflictDoNothing();
+			const tag = await db.query.tags.findFirst({ where: eq(schema.tags.name, tagName) });
+			if (tag) createdTagIds.push(tag.id);
 		}
 
-		// Combine all tag IDs
 		const allTagIds = [...selectedTagIds, ...createdTagIds];
+		const questionId = createId();
+		const now = new Date().toISOString();
 
-		// Create question
-		await prisma.question.create({
-			data: {
-				answer: answer.trim(),
-				question: question.trim(),
-				instructorId: locals.instructor!.id,
-				tags: {
-					create: allTagIds.map((tagId) => ({
-						tagId
-					}))
-				}
-			}
+		await db.insert(schema.questions).values({
+			id: questionId,
+			answer: answer.trim(),
+			question: question.trim(),
+			instructorId: locals.instructor!.id,
+			createdAt: now,
+			updatedAt: now,
 		});
+
+		for (const tagId of allTagIds) {
+			await db.insert(schema.questionTags).values({ questionId, tagId }).onConflictDoNothing();
+		}
 
 		throw redirect(303, '/dashboard/questions');
 	}

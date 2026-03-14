@@ -1,64 +1,47 @@
-import { error } from "@sveltejs/kit";
-import type { PageServerLoad } from "./$types";
-import prisma from "$lib/server/prisma";
+import { error } from '@sveltejs/kit';
+import { getDb } from '$lib/server/db';
+import * as schema from '$lib/server/schema';
+import { and, eq, asc } from 'drizzle-orm';
+import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, url }) => {
-  const gameCode = params.code;
-  const studentId = url.searchParams.get("studentId");
+export const load: PageServerLoad = async ({ params, url, platform }) => {
+	const db = getDb(platform!.env.DB);
+	const gameCode = params.code;
+	const studentId = url.searchParams.get('studentId');
 
-  if (!studentId) {
-    throw error(400, "Student ID is required");
-  }
+	if (!studentId) throw error(400, 'Student ID is required');
 
-  // Load game data
-  const game = await prisma.game.findUnique({
-    where: { code: gameCode.toUpperCase() },
-    include: {
-      board: {
-        include: {
-          categories: {
-            include: {
-              slots: {
-                include: {
-                  question: true,
-                },
-                orderBy: { row: "asc" },
-              },
-            },
-            orderBy: { order: "asc" },
-          },
-        },
-      },
-      teams: {
-        include: {
-          students: true,
-        },
-      },
-      gameState: true,
-    },
-  });
+	const [game, student] = await Promise.all([
+		db.query.games.findFirst({
+			where: eq(schema.games.code, gameCode.toUpperCase()),
+			with: {
+				board: {
+					with: {
+						categories: {
+							with: {
+								slots: {
+									with: { question: true },
+									orderBy: [asc(schema.boardQuestionSlots.row)],
+								},
+							},
+							orderBy: [asc(schema.categories.order)],
+						},
+					},
+				},
+				teams: {
+					with: { students: true },
+				},
+				gameState: true,
+			},
+		}),
+		db.query.students.findFirst({
+			where: eq(schema.students.id, studentId),
+			with: { team: true },
+		}),
+	]);
 
-  if (!game) {
-    throw error(404, "Game not found");
-  }
+	if (!game) throw error(404, 'Game not found');
+	if (!student || student.gameId !== game.id) throw error(404, 'Student not found in this game');
 
-  // Load student data
-  const student = await prisma.student.findFirst({
-    where: {
-      id: studentId,
-      gameId: game.id,
-    },
-    include: {
-      team: true,
-    },
-  });
-
-  if (!student) {
-    throw error(404, "Student not found in this game");
-  }
-
-  return {
-    game,
-    student,
-  };
+	return { game, student };
 };

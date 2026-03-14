@@ -1,43 +1,33 @@
-import { error } from "@sveltejs/kit";
-import type { PageServerLoad } from "./$types";
-import prisma from "$lib/server/prisma";
-import { generateGameQRCode } from "$lib/server/qr";
+import { error } from '@sveltejs/kit';
+import { getDb } from '$lib/server/db';
+import * as schema from '$lib/server/schema';
+import { eq, asc } from 'drizzle-orm';
+import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, url }) => {
-  const gameCode = params.code;
+export const load: PageServerLoad = async ({ params, url, platform }) => {
+	const db = getDb(platform!.env.DB);
+	const game = await db.query.games.findFirst({
+		where: eq(schema.games.code, params.code.toUpperCase()),
+		with: {
+			board: {
+				with: {
+					categories: {
+						with: {
+							slots: {
+								with: { question: true },
+								orderBy: [asc(schema.boardQuestionSlots.row)],
+							},
+						},
+						orderBy: [asc(schema.categories.order)],
+					},
+				},
+			},
+			gameState: true,
+		},
+	});
 
-  // Load game data
-  const game = await prisma.game.findUnique({
-    where: { code: gameCode.toUpperCase() },
-    include: {
-      board: {
-        include: {
-          categories: {
-            include: {
-              slots: {
-                include: {
-                  question: true,
-                },
-                orderBy: { row: "asc" },
-              },
-            },
-            orderBy: { order: "asc" },
-          },
-        },
-      },
-      gameState: true,
-    },
-  });
+	if (!game) throw error(404, 'Game not found');
 
-  if (!game) {
-    throw error(404, "Game not found");
-  }
-
-  // Generate QR code with dynamic base URL
-  const baseUrl = `${url.protocol}//${url.host}`;
-
-  return {
-    game,
-    baseUrl,
-  };
+	const baseUrl = `${url.protocol}//${url.host}`;
+	return { game, baseUrl };
 };

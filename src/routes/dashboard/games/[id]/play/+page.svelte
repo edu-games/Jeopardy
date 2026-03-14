@@ -1,12 +1,12 @@
 <script lang="ts">
     import type { PageData } from "./$types";
-    import { onMount } from "svelte";
+    import { onMount, onDestroy } from "svelte";
 
     let { data }: { data: PageData } = $props();
 
     // Local state for real-time updates
     let teams = $state(data.game.teams);
-    let answeredSlots = $state(data.game.gameState?.answeredSlots || []);
+    let answeredSlots = $state(data.game.gameState?.answeredSlots ? JSON.parse(data.game.gameState.answeredSlots as unknown as string) : []);
     let currentSlot = $state<any>(null);
     let selectedTeamId = $state("");
     let submittingAnswer = $state(false);
@@ -17,77 +17,34 @@
     let showEndGameConfirm = $state(false);
     let endingGame = $state(false);
 
+    let ws: WebSocket | null = null;
+
+    function send(msg: object) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(msg));
+        }
+    }
+
     function isSlotAnswered(slotId: string) {
         return answeredSlots.includes(slotId);
     }
 
-    async function endGame() {
+    function endGame() {
         endingGame = true;
-
-        try {
-            const response = await fetch(`/api/games/${data.game.id}/end`, {
-                method: "POST",
-            });
-
-            if (response.ok) {
-                window.location.href = "/dashboard/games";
-            } else {
-                alert("Failed to end game");
-                endingGame = false;
-            }
-        } catch (err) {
-            alert("An error occurred while ending the game");
-            endingGame = false;
-        }
+        send({ type: "end-game" });
     }
 
-    async function revealQuestion(slot: any) {
-        if (isSlotAnswered(slot.id)) {
-            return;
-        }
-
+    function revealQuestion(slot: any) {
+        if (isSlotAnswered(slot.id)) return;
         currentSlot = slot;
         selectedTeamId = teams[0]?.id || "";
-
-        // Call API to reveal question
-        await fetch(`/api/games/${data.game.id}/reveal-question`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ slotId: slot.id }),
-        });
+        send({ type: "reveal-question", slotId: slot.id });
     }
 
-    async function submitAnswer(isCorrect: boolean) {
-        if (!selectedTeamId || !currentSlot) return;
-
+    function submitAnswer(isCorrect: boolean) {
+        if (!selectedTeamId || !currentSlot || submittingAnswer) return;
         submittingAnswer = true;
-
-        try {
-            const response = await fetch(`/api/games/${data.game.id}/answer`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    teamId: selectedTeamId,
-                    isCorrect,
-                }),
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                teams = result.teams;
-                answeredSlots = result.gameState.answeredSlots;
-                currentSlot = null;
-                selectedTeamId = "";
-            } else {
-                alert("Failed to submit answer");
-            }
-        } finally {
-            submittingAnswer = false;
-        }
+        send({ type: "answer", isCorrect, teamId: selectedTeamId });
     }
 
     function closeModal() {
@@ -98,56 +55,45 @@
     let answeredCount = $derived(answeredSlots.length);
     let totalQuestions = 30;
 
-    // Set up Server-Sent Events for real-time updates
-    onMount(() => {
-        const eventSource = new EventSource(`/api/sse/${data.game.id}`);
+    function connect() {
+        ws = new WebSocket(`/api/ws/${data.game.id}?role=instructor`);
 
-        eventSource.onmessage = (event) => {
+        ws.onmessage = (event) => {
             try {
-                const eventData = JSON.parse(event.data);
-                console.log("[SSE Instructor] Received event:", eventData.type);
+                const msg = JSON.parse(event.data);
 
-                switch (eventData.type) {
-                    case "connected":
-                        console.log(
-                            "[SSE Instructor] Connected with client ID:",
-                            eventData.clientId,
-                        );
-                        break;
-
+                switch (msg.type) {
                     case "buzzer-pressed":
-                        // Show notification when student buzzes in
                         buzzerNotification = {
-                            studentName: eventData.studentName,
-                            teamName: eventData.teamName,
+                            studentName: msg.studentName,
+                            teamName: msg.teamName,
                         };
-                        // Auto-hide after 3 seconds
-                        setTimeout(() => {
-                            buzzerNotification = null;
-                        }, 3000);
+                        setTimeout(() => { buzzerNotification = null; }, 3000);
                         break;
 
                     case "answer-submitted":
-                        // Update scores when answer is submitted (in case of multiple instructors)
-                        teams = eventData.teams;
-                        answeredSlots = eventData.answeredSlots;
+                        teams = msg.teams;
+                        answeredSlots = msg.answeredSlots;
+                        currentSlot = null;
+                        selectedTeamId = "";
+                        submittingAnswer = false;
+                        break;
+
+                    case "game-ended":
+                        window.location.href = "/dashboard/games";
                         break;
                 }
-            } catch (error) {
-                console.error("[SSE Instructor] Error parsing event:", error);
+            } catch (err) {
+                console.error("[WS Instructor] Error:", err);
             }
         };
 
-        eventSource.onerror = (error) => {
-            console.error("[SSE Instructor] Connection error:", error);
-            eventSource.close();
-        };
+        ws.onerror = () => console.error("[WS Instructor] Connection error");
+        ws.onclose = () => { endingGame = false; };
+    }
 
-        // Cleanup on unmount
-        return () => {
-            eventSource.close();
-        };
-    });
+    onMount(connect);
+    onDestroy(() => ws?.close());
 </script>
 
 <div

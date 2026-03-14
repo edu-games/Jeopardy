@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { PageData } from "./$types";
-    import { onMount } from "svelte";
+    import { onMount, onDestroy } from "svelte";
     import ConnectionStatus from "$lib/components/ConnectionStatus.svelte";
     import JeopardyBoard from "$lib/components/JeopardyBoard.svelte";
     import QuestionDisplay from "$lib/components/QuestionDisplay.svelte";
@@ -8,11 +8,16 @@
     let { data }: { data: PageData } = $props();
 
     // Real-time game state
-    let answeredSlots = $state(data.game.gameState?.answeredSlots || []);
+    let answeredSlots = $state<string[]>(
+        typeof data.game.gameState?.answeredSlots === "string"
+            ? JSON.parse(data.game.gameState.answeredSlots)
+            : (data.game.gameState?.answeredSlots ?? []),
+    );
     let currentSlotData = $state<any>(null);
     let connectionStatus = $state<"connected" | "connecting" | "disconnected">(
         "connecting",
     );
+    let ws: WebSocket | null = null;
 
     // Get current question slot if one is active
     const currentSlot = $derived(
@@ -32,71 +37,52 @@
             : null,
     );
 
-    // Set up Server-Sent Events for real-time updates
-    onMount(() => {
-        const eventSource = new EventSource(`/api/sse/${data.game.id}`);
+    function connect() {
+        ws = new WebSocket(`/api/ws/${data.game.id}?role=projector`);
 
-        eventSource.onopen = () => {
+        ws.onopen = () => {
             connectionStatus = "connected";
-            console.log("[SSE Projector] Connection opened");
         };
 
-        eventSource.onmessage = (event) => {
+        ws.onmessage = (event) => {
             try {
-                const eventData = JSON.parse(event.data);
-                console.log("[SSE Projector] Received event:", eventData.type);
+                const msg = JSON.parse(event.data);
 
-                switch (eventData.type) {
-                    case "connected":
-                        connectionStatus = "connected";
-                        console.log(
-                            "[SSE Projector] Connected with client ID:",
-                            eventData.clientId,
-                        );
-                        break;
-
+                switch (msg.type) {
                     case "question-revealed":
-                        // New question revealed
-                        currentSlotData = eventData.currentSlot;
+                        currentSlotData = msg.currentSlot;
                         break;
 
                     case "answer-submitted":
-                        // Answer was submitted, update answered slots and reset question
-                        console.log(
-                            "[SSE Projector] Answer submitted:",
-                            eventData,
-                        );
-                        answeredSlots = eventData.answeredSlots;
+                        answeredSlots = msg.answeredSlots;
                         currentSlotData = null;
                         break;
 
+                    case "game-started":
+                        window.location.reload();
+                        break;
+
                     case "game-ended":
-                        // Game ended
                         window.location.reload();
                         break;
                 }
             } catch (error) {
-                console.error("[SSE Projector] Error parsing event:", error);
+                console.error("[WS Projector] Error parsing message:", error);
             }
         };
 
-        eventSource.onerror = (error) => {
-            console.error("[SSE Projector] Connection error:", error);
+        ws.onclose = () => {
             connectionStatus = "disconnected";
-
-            // Try to reconnect after 3 seconds
-            setTimeout(() => {
-                if (eventSource.readyState === EventSource.CLOSED) {
-                    window.location.reload();
-                }
-            }, 3000);
+            setTimeout(connect, 3000);
         };
 
-        // Cleanup on unmount
-        return () => {
-            eventSource.close();
+        ws.onerror = () => {
+            connectionStatus = "disconnected";
         };
-    });
+    }
+
+    onMount(connect);
+    onDestroy(() => ws?.close());
 </script>
 
 <svelte:head>

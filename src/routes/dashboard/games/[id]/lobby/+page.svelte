@@ -1,10 +1,11 @@
 <script lang="ts">
     import type { PageData } from "./$types";
-    import { onMount } from "svelte";
+    import { onMount, onDestroy } from "svelte";
 
     let { data }: { data: PageData } = $props();
 
     let starting = $state(false);
+    let ws: WebSocket | null = null;
 
     // Real-time state
     let teams = $state(data.game.teams);
@@ -13,23 +14,15 @@
     // Get unassigned students
     let unassignedStudents = $derived(students.filter((s) => !s.teamId));
 
-    async function assignStudent(studentId: string, teamId: string) {
-        const response = await fetch(`/api/games/${data.game.id}/assign-team`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ studentId, teamId }),
-        });
-
-        if (response.ok) {
-            window.location.reload();
-        } else {
-            alert("Failed to assign student");
-        }
+    function send(msg: object) {
+        ws?.send(JSON.stringify(msg));
     }
 
-    async function startGame() {
+    function assignStudent(studentId: string, teamId: string) {
+        send({ type: "assign-team", studentId, teamId });
+    }
+
+    function startGame() {
         if (
             data.game.teamAssignment === "MANUAL" &&
             unassignedStudents.length > 0
@@ -42,19 +35,8 @@
                 return;
             }
         }
-
         starting = true;
-
-        const response = await fetch(`/api/games/${data.game.id}/start`, {
-            method: "POST",
-        });
-
-        if (response.ok) {
-            window.location.href = `/dashboard/games/${data.game.id}/play`;
-        } else {
-            alert("Failed to start game");
-            starting = false;
-        }
+        send({ type: "start-game" });
     }
 
     function copyJoinUrl() {
@@ -63,55 +45,44 @@
         alert("Join URL copied to clipboard!");
     }
 
-    // Set up Server-Sent Events for real-time updates
     onMount(() => {
-        const eventSource = new EventSource(`/api/sse/${data.game.id}`);
+        ws = new WebSocket(`/api/ws/${data.game.id}?role=instructor`);
 
-        eventSource.onmessage = (event) => {
+        ws.onmessage = (event) => {
             try {
-                const eventData = JSON.parse(event.data);
-                console.log("[SSE Lobby] Received event:", eventData.type);
+                const msg = JSON.parse(event.data);
 
-                switch (eventData.type) {
-                    case "connected":
-                        console.log(
-                            "[SSE Lobby] Connected with client ID:",
-                            eventData.clientId,
-                        );
-                        break;
-
+                switch (msg.type) {
                     case "student-joined":
-                        // New student joined
-                        students = eventData.students;
-                        teams = eventData.teams;
+                        students = msg.students;
+                        teams = msg.teams;
                         break;
 
                     case "team-assigned":
-                        // Student was assigned to a team
-                        students = eventData.students;
-                        teams = eventData.teams;
+                        students = msg.students;
+                        teams = msg.teams;
                         break;
 
                     case "game-started":
-                        // Game started, redirect to play page
                         window.location.href = `/dashboard/games/${data.game.id}/play`;
                         break;
+
+                    case "error":
+                        alert(msg.message || "An error occurred");
+                        starting = false;
+                        break;
                 }
-            } catch (error) {
-                console.error("[SSE Lobby] Error parsing event:", error);
+            } catch (err) {
+                console.error("[WS Lobby] Error:", err);
             }
         };
 
-        eventSource.onerror = (error) => {
-            console.error("[SSE Lobby] Connection error:", error);
-            eventSource.close();
-        };
-
-        // Cleanup on unmount
-        return () => {
-            eventSource.close();
+        ws.onerror = () => {
+            starting = false;
         };
     });
+
+    onDestroy(() => ws?.close());
 </script>
 
 <div class="max-w-7xl mx-auto">

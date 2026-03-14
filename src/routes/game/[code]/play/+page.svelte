@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { PageData } from "./$types";
-    import { onMount } from "svelte";
+    import { onMount, onDestroy } from "svelte";
 
     let { data }: { data: PageData } = $props();
 
@@ -12,8 +12,8 @@
     let teams = $state(data.game.teams);
     let gameState = $state(data.game.gameState);
     let currentSlotData = $state<any>(null);
+    let ws: WebSocket | null = null;
 
-    // Get current question slot if one is active
     const currentSlot = $derived(
         currentSlotData ||
             (gameState?.currentSlotId
@@ -32,119 +32,84 @@
     );
 
     const buzzerEnabled = $derived(gameState?.buzzerEnabled || false);
-
-    // My team's current data
     const myTeam = $derived(teams.find((t) => t.id === data.student.team?.id));
 
-    async function pressBuzzer() {
-        if (!buzzerEnabled || buzzerPressed || pressingBuzzer) {
-            return;
-        }
-
+    function pressBuzzer() {
+        if (!buzzerEnabled || buzzerPressed || pressingBuzzer || !ws) return;
         pressingBuzzer = true;
         buzzerError = "";
-
-        try {
-            const response = await fetch("/api/students/buzzer", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    studentId: data.student.id,
-                    gameId: data.game.id,
-                }),
-            });
-
-            if (response.ok) {
-                buzzerPressed = true;
-            } else {
-                const error = await response.json();
-                buzzerError = error.message || "Failed to press buzzer";
-            }
-        } catch (err) {
-            buzzerError = "An error occurred. Please try again.";
-        } finally {
-            pressingBuzzer = false;
-        }
+        ws.send(JSON.stringify({ type: "buzzer" }));
     }
 
-    // Set up Server-Sent Events for real-time updates
-    onMount(() => {
-        const eventSource = new EventSource(`/api/sse/${data.game.id}`);
+    function connect() {
+        ws = new WebSocket(
+            `/api/ws/${data.game.id}?role=student&studentId=${data.student.id}`
+        );
 
-        eventSource.onmessage = (event) => {
+        ws.onmessage = (event) => {
             try {
-                const eventData = JSON.parse(event.data);
-                console.log("[SSE] Received event:", eventData.type);
+                const msg = JSON.parse(event.data);
 
-                switch (eventData.type) {
-                    case "connected":
-                        console.log(
-                            "[SSE] Connected with client ID:",
-                            eventData.clientId,
-                        );
-                        break;
-
+                switch (msg.type) {
                     case "question-revealed":
-                        // New question revealed
-                        currentSlotData = eventData.currentSlot;
+                        currentSlotData = msg.currentSlot;
                         if (gameState) {
-                            gameState.currentSlotId = eventData.slotId;
-                            gameState.buzzerEnabled = eventData.buzzerEnabled;
+                            gameState.currentSlotId = msg.slotId;
+                            gameState.buzzerEnabled = msg.buzzerEnabled;
                         }
-                        buzzerPressed = false; // Reset buzzer state for new question
+                        buzzerPressed = false;
                         buzzerError = "";
+                        pressingBuzzer = false;
                         break;
 
                     case "answer-submitted":
-                        // Answer was submitted, update scores and reset question
-                        console.log(
-                            "[SSE] Answer submitted, updating teams:",
-                            eventData.teams,
-                        );
-                        teams = eventData.teams;
+                        teams = msg.teams;
                         if (gameState) {
-                            gameState.answeredSlots = eventData.answeredSlots;
-                            gameState.currentSlotId = eventData.currentSlotId;
+                            gameState.answeredSlots = msg.answeredSlots;
+                            gameState.currentSlotId = msg.currentSlotId;
                             gameState.buzzerEnabled = false;
                         }
                         currentSlotData = null;
                         buzzerPressed = false;
+                        pressingBuzzer = false;
                         break;
 
                     case "buzzer-pressed":
-                        // Someone buzzed in (could show notification)
-                        console.log(
-                            `[SSE] ${eventData.studentName} from ${eventData.teamName} buzzed in!`,
-                        );
+                        // If this student buzzed in successfully
+                        if (msg.studentId === data.student.id) {
+                            buzzerPressed = true;
+                        }
+                        pressingBuzzer = false;
+                        break;
+
+                    case "error":
+                        if (pressingBuzzer) {
+                            buzzerError = msg.message || "Failed to press buzzer";
+                            pressingBuzzer = false;
+                        }
                         break;
 
                     case "game-started":
-                        // Game started, reload to show game
                         window.location.reload();
                         break;
 
                     case "game-ended":
-                        // Game ended, redirect to results page
                         window.location.href = `/game/${data.game.code}/results?studentId=${data.student.id}`;
                         break;
                 }
-            } catch (error) {
-                console.error("[SSE] Error parsing event:", error);
+            } catch (err) {
+                console.error("[WS Student] Error:", err);
             }
         };
 
-        eventSource.onerror = (error) => {
-            console.error("[SSE] Connection error:", error);
-            eventSource.close();
+        ws.onerror = () => {
+            buzzerError = "Connection error. Please reload.";
+            pressingBuzzer = false;
         };
+    }
 
-        // Cleanup on unmount
-        return () => {
-            eventSource.close();
-        };
-    });
+    onMount(connect);
+    onDestroy(() => ws?.close());
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 p-4">

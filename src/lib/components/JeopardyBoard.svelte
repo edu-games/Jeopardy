@@ -1,6 +1,4 @@
 <script lang="ts">
-    import type { Board } from "@prisma/client";
-
     let {
         categories,
         answeredSlots = [],

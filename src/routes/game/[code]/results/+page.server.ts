@@ -1,57 +1,37 @@
 import { error } from '@sveltejs/kit';
+import { getDb } from '$lib/server/db';
+import * as schema from '$lib/server/schema';
+import { and, eq, desc } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
-import prisma from '$lib/server/prisma';
 
-export const load: PageServerLoad = async ({ params, url }) => {
+export const load: PageServerLoad = async ({ params, url, platform }) => {
+	const db = getDb(platform!.env.DB);
 	const gameCode = params.code;
 	const studentId = url.searchParams.get('studentId');
 
-	if (!studentId) {
-		throw error(400, 'Student ID is required');
-	}
+	if (!studentId) throw error(400, 'Student ID is required');
 
-	// Load game data
-	const game = await prisma.game.findUnique({
-		where: { code: gameCode.toUpperCase() },
-		include: {
+	const game = await db.query.games.findFirst({
+		where: eq(schema.games.code, gameCode.toUpperCase()),
+		with: {
 			board: true,
 			teams: {
-				include: {
-					students: true
-				},
-				orderBy: {
-					score: 'desc' // Order by highest score first
-				}
+				with: { students: true },
+				orderBy: [desc(schema.teams.score)],
 			},
-			gameState: true
-		}
-	});
-
-	if (!game) {
-		throw error(404, 'Game not found');
-	}
-
-	if (game.status !== 'COMPLETED') {
-		throw error(400, 'Game is not yet completed');
-	}
-
-	// Load student data
-	const student = await prisma.student.findFirst({
-		where: {
-			id: studentId,
-			gameId: game.id
+			gameState: true,
 		},
-		include: {
-			team: true
-		}
 	});
 
-	if (!student) {
-		throw error(404, 'Student not found in this game');
-	}
+	if (!game) throw error(404, 'Game not found');
+	if (game.status !== 'COMPLETED') throw error(400, 'Game is not yet completed');
 
-	return {
-		game,
-		student
-	};
+	const student = await db.query.students.findFirst({
+		where: and(eq(schema.students.id, studentId), eq(schema.students.gameId, game.id)),
+		with: { team: true },
+	});
+
+	if (!student) throw error(404, 'Student not found in this game');
+
+	return { game, student };
 };
