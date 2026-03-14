@@ -82,6 +82,7 @@
                             studentName: msg.studentName,
                             teamName: msg.teamName,
                         };
+                        if (msg.teamId) selectedTeamId = msg.teamId as string;
                         setTimeout(() => { buzzerNotification = null; }, 3000);
                         break;
 
@@ -124,135 +125,122 @@
     onDestroy(() => { ws?.close(); if (endGameTimeout) clearTimeout(endGameTimeout); });
 </script>
 
-<div
-    class="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex flex-col p-4"
->
-    <div class="max-w-7xl mx-auto w-full flex flex-col flex-1 min-h-0">
-        <!-- Header with Scoreboard -->
-        <div
-            class="mb-3 bg-white/10 backdrop-blur-sm rounded-lg p-3 flex-shrink-0"
-        >
-            <div class="flex justify-between items-center mb-2">
-                <div class="text-white">
-                    <h1 class="text-xl font-bold">{data.game.board.name}</h1>
-                    <p class="text-sm text-blue-200">
-                        Progress: {answeredCount}/{totalQuestions} questions
-                    </p>
-                </div>
-                <div class="flex gap-2">
-                    {#if data.game.status === "COMPLETED"}
-                        <a
-                            href="/dashboard/games/{data.game.id}/results"
-                            class="px-3 py-1.5 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium"
-                        >
-                            View Results
-                        </a>
-                    {:else}
-                        <a
-                            href="/game/{data.game.code}/projector"
-                            target="_blank"
-                            class="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center gap-1.5"
-                        >
-                            <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                                />
-                            </svg>
-                            Projector View
-                        </a>
-                        <button
-                            type="button"
-                            onclick={() => (showEndGameConfirm = true)}
-                            class="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-                        >
-                            End Game
-                        </button>
-                    {/if}
-                </div>
-            </div>
+<div class="h-screen flex flex-col bg-[#0f172a] overflow-hidden">
 
-            <!-- Team Scores -->
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-                {#each teams as team}
-                    <div
-                        class="p-2 rounded-lg text-center"
-                        style={`background-color: ${team.color}20; border: 2px solid ${team.color}`}
-                    >
-                        <div
-                            class="flex items-center justify-center gap-1.5 mb-0.5"
-                        >
+    <!-- Top bar -->
+    <div class="shrink-0 px-5 py-3 border-b border-white/10 flex items-center justify-between gap-4">
+        <!-- Left: board name + progress -->
+        <div>
+            <span class="text-white font-bold text-lg">{data.game.board.name}</span>
+            <span class="ml-3 text-white/40 text-sm">{answeredCount} / {totalQuestions} answered</span>
+        </div>
+        <!-- Right: action buttons -->
+        <div class="flex items-center gap-2">
+            {#if data.game.status === "COMPLETED"}
+                <a
+                    href="/dashboard/games/{data.game.id}/results"
+                    class="bg-yellow-500 text-blue-950 px-3 py-1.5 rounded-xl text-sm font-bold hover:bg-yellow-400 transition-colors"
+                >
+                    View Results
+                </a>
+            {:else}
+                <a
+                    href="/game/{data.game.code}/projector"
+                    target="_blank"
+                    class="bg-white/10 border border-white/20 text-white/70 px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-white/15 transition-colors"
+                >
+                    Projector
+                </a>
+                <button
+                    type="button"
+                    onclick={() => (showEndGameConfirm = true)}
+                    class="bg-red-600/80 text-white px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-red-600 transition-colors"
+                >
+                    End Game
+                </button>
+            {/if}
+        </div>
+    </div>
+
+    <!-- Team strip -->
+    <div class="shrink-0 px-5 py-3 border-b border-white/10">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+            {#each teams as team}
+                <div
+                    class="p-2.5 rounded-2xl border"
+                    style={`background: ${team.color}15; border-color: ${team.color}40`}
+                >
+                    <!-- Team name + score -->
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center gap-1.5 min-w-0">
                             <div
-                                class="w-2 h-2 rounded-full"
+                                class="w-2 h-2 rounded-full shrink-0"
                                 style={`background-color: ${team.color}`}
                             ></div>
-                            <p class="font-semibold text-white text-xs">
-                                {team.name}
-                            </p>
+                            <span class="text-white/80 text-xs font-semibold truncate">{team.name}</span>
                         </div>
-                        <p class="text-xl font-bold text-white">
+                        <span class="text-xs font-black shrink-0 ml-1" style={`color: ${team.color}`}>
                             ${team.score}
-                        </p>
-                        <p class="text-xs text-blue-200">
-                            {team.students.filter(s => connectedStudents.has(s.id)).length}/{team.students.length} online
-                        </p>
+                        </span>
                     </div>
-                {/each}
-            </div>
+                    <!-- Student list -->
+                    <div class="flex flex-col gap-0.5">
+                        {#each team.students as student}
+                            <div class="flex items-center gap-1.5">
+                                <div
+                                    class={`w-1.5 h-1.5 rounded-full shrink-0 ${connectedStudents.has(student.id) ? "bg-green-400" : "bg-white/15"}`}
+                                ></div>
+                                <span
+                                    class={`text-xs truncate ${connectedStudents.has(student.id) ? "text-white/70" : "text-white/25"}`}
+                                >{student.name}</span>
+                            </div>
+                        {/each}
+                        {#if team.students.length === 0}
+                            <p class="text-white/20 text-xs italic">No students</p>
+                        {/if}
+                    </div>
+                </div>
+            {/each}
         </div>
+    </div>
 
-        <!-- Jeopardy Board -->
-        <div class="bg-blue-800 rounded-lg p-4 shadow-2xl flex flex-col flex-1">
-            <!-- Category Headers -->
-            <div class="grid grid-cols-6 gap-2 mb-2 flex-shrink-0">
+    <!-- Board area -->
+    <div class="flex-1 px-5 pb-5 flex flex-col min-h-0 pt-3">
+        <div class="flex-1 rounded-2xl overflow-hidden flex flex-col bg-[#0a1628] min-h-0">
+            <!-- Category headers -->
+            <div class="grid grid-cols-6 gap-1 p-2 bg-white/5 shrink-0">
                 {#each data.game.board.categories as category}
-                    <div class="bg-blue-900 p-4 rounded-lg text-center">
-                        <h3
-                            class="text-yellow-400 font-bold text-sm uppercase tracking-wide"
-                        >
-                            {category.name}
-                        </h3>
+                    <div class="text-yellow-400 font-bold text-xs uppercase tracking-wide text-center py-2 px-1">
+                        {category.name}
                     </div>
                 {/each}
             </div>
 
-            <!-- Question Grid -->
-            <div class="grid grid-cols-6 gap-2 flex-1">
+            <!-- Question grid -->
+            <div class="grid grid-cols-6 gap-1 flex-1 p-2 pt-1 min-h-0">
                 {#each Array.from({ length: 5 }, (_, rowIndex) => rowIndex) as rowIndex}
                     {#each data.game.board.categories as category}
-                        {@const slot = category.slots.find(
-                            (s) => s.row === rowIndex,
-                        )}
+                        {@const slot = category.slots.find((s) => s.row === rowIndex)}
                         {#if slot}
                             <button
                                 type="button"
                                 onclick={() => revealQuestion(slot)}
                                 disabled={isSlotAnswered(slot.id)}
                                 class={`
-								p-4 rounded-lg font-bold text-2xl transition-all flex items-center justify-center
-								${
-                                    isSlotAnswered(slot.id)
-                                        ? "bg-blue-900/50 text-blue-700 cursor-not-allowed"
-                                        : "bg-blue-600 text-yellow-400 hover:bg-blue-500 hover:scale-105 cursor-pointer shadow-lg"
-                                }
-								${slot.isDailyDouble && !isSlotAnswered(slot.id) ? "ring-4 ring-yellow-500" : ""}
-							`}
+                                    rounded-xl transition-all flex items-center justify-center
+                                    ${
+                                        isSlotAnswered(slot.id)
+                                            ? "bg-white/[0.03] cursor-not-allowed"
+                                            : "bg-blue-800 hover:bg-blue-600 active:scale-95 cursor-pointer shadow"
+                                    }
+                                    ${slot.isDailyDouble && !isSlotAnswered(slot.id) ? "ring-1 ring-yellow-400" : ""}
+                                `}
                             >
                                 {#if !isSlotAnswered(slot.id)}
-                                    ${slot.points}
-                                    {#if slot.isDailyDouble}
-                                        <div class="text-xs mt-1">DD</div>
-                                    {/if}
+                                    <span class="text-yellow-400 font-black text-lg md:text-xl">${slot.points}</span>
                                 {:else}
                                     <svg
-                                        class="w-8 h-8 mx-auto"
+                                        class="w-5 h-5 text-white/15"
                                         fill="currentColor"
                                         viewBox="0 0 20 20"
                                     >
@@ -274,145 +262,95 @@
 
 <!-- Question Modal -->
 {#if currentSlot}
-    <div
-        class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
-    >
-        <div
-            class="bg-blue-900 rounded-lg max-w-4xl w-full p-8 text-white shadow-2xl"
-        >
+    <div class="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-[#0f172a] border border-white/10 rounded-3xl max-w-3xl w-full p-7 shadow-2xl">
             <!-- Header -->
-            <div class="flex justify-between items-start mb-6">
+            <div class="flex justify-between items-start mb-5">
                 <div>
-                    <div class="text-yellow-400 text-sm font-semibold mb-1">
+                    <p class="text-white/50 text-xs uppercase tracking-widest font-medium mb-1">
                         {data.game.board.categories.find((c) =>
                             c.slots.some((s) => s.id === currentSlot.id),
                         )?.name}
-                    </div>
-                    <div class="text-3xl font-bold text-yellow-400">
+                    </p>
+                    <p class="text-3xl font-black text-yellow-400">
                         ${currentSlot.points}
-                    </div>
+                    </p>
                     {#if currentSlot.isDailyDouble}
-                        <div
-                            class="mt-2 inline-block px-3 py-1 bg-yellow-500 text-blue-900 rounded-full text-sm font-bold"
-                        >
+                        <span class="mt-2 inline-block px-3 py-1 bg-yellow-500 text-blue-950 rounded-full text-xs font-black">
                             DAILY DOUBLE
-                        </div>
+                        </span>
                     {/if}
                 </div>
                 <button
+                    type="button"
                     onclick={closeModal}
-                    class="text-white/60 hover:text-white transition-colors"
+                    class="text-white/40 hover:text-white/80 transition-colors p-1"
                 >
-                    <svg
-                        class="w-8 h-8"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"
-                        />
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
 
-            <!-- Buzzer Notification -->
+            <!-- Buzzer notification -->
             {#if buzzerNotification}
-                <div
-                    class="mb-6 bg-red-600 text-white px-6 py-4 rounded-lg shadow-xl animate-pulse"
-                >
-                    <div class="flex items-center gap-3">
-                        <svg
-                            class="w-8 h-8"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                        >
-                            <path
-                                d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"
-                            />
-                        </svg>
-                        <div>
-                            <p class="font-bold text-lg">Buzzer Pressed!</p>
-                            <p class="text-sm">
-                                {buzzerNotification.studentName} from {buzzerNotification.teamName}
-                            </p>
-                        </div>
+                <div class="bg-red-600 rounded-2xl px-5 py-3 mb-5 flex items-center gap-3 animate-pulse">
+                    <svg class="w-6 h-6 text-white shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                    </svg>
+                    <div>
+                        <p class="font-bold text-white text-sm">Buzzer Pressed!</p>
+                        <p class="text-red-200 text-xs">{buzzerNotification.studentName} from {buzzerNotification.teamName}</p>
                     </div>
                 </div>
             {/if}
 
-            <!-- Answer (Clue) -->
-            <div class="mb-6 p-6 bg-blue-800 rounded-lg">
-                <p class="text-sm text-blue-300 mb-2 uppercase tracking-wide">
-                    Clue
-                </p>
-                <p class="text-2xl">{currentSlot.question.answer}</p>
+            <!-- Clue section -->
+            <div class="bg-blue-950 rounded-2xl p-5 mb-4">
+                <p class="text-white/40 text-xs uppercase tracking-widest mb-2">Clue</p>
+                <p class="text-white text-xl leading-relaxed">{currentSlot.question.answer}</p>
             </div>
 
-            <!-- Question (Response) -->
-            <div class="mb-8 p-6 bg-blue-700 rounded-lg">
-                <p class="text-sm text-blue-300 mb-2 uppercase tracking-wide">
-                    Correct Response
-                </p>
-                <p class="text-2xl font-semibold text-yellow-400">
-                    {currentSlot.question.question}
-                </p>
+            <!-- Answer section -->
+            <div class="bg-white/5 border border-white/10 rounded-2xl p-5 mb-5">
+                <p class="text-white/40 text-xs uppercase tracking-widest mb-2">Correct Response</p>
+                <p class="text-yellow-400 text-xl font-semibold">{currentSlot.question.question}</p>
             </div>
 
-            <!-- Team Selection -->
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-blue-200 mb-3">
-                    Which team is answering?
-                </label>
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <!-- Team selector -->
+            <div class="mb-5">
+                <p class="text-white/50 text-sm font-medium mb-3">Which team is answering?</p>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {#each teams as team}
                         <button
                             type="button"
                             onclick={() => (selectedTeamId = team.id)}
                             class={`
-								p-4 rounded-lg border-2 transition-all text-left
-								${selectedTeamId === team.id ? "ring-4 ring-white" : "hover:scale-105"}
-							`}
-                            style={`background-color: ${team.color}40; border-color: ${team.color}`}
+                                p-3 rounded-xl border-2 transition-all text-left
+                                ${selectedTeamId === team.id ? "ring-2 ring-white" : "hover:brightness-110"}
+                            `}
+                            style={`background: ${team.color}20; border-color: ${team.color}60`}
                         >
-                            <div class="flex items-center gap-2 mb-1">
-                                <div
-                                    class="w-3 h-3 rounded-full"
-                                    style={`background-color: ${team.color}`}
-                                ></div>
-                                <span class="font-semibold">{team.name}</span>
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <div class="w-2.5 h-2.5 rounded-full" style={`background-color: ${team.color}`}></div>
+                                <span class="text-white font-semibold text-sm truncate">{team.name}</span>
                             </div>
-                            <div class="text-sm text-blue-200">
-                                ${team.score}
-                            </div>
+                            <span class="text-xs font-bold" style={`color: ${team.color}`}>${team.score}</span>
                         </button>
                     {/each}
                 </div>
             </div>
 
-            <!-- Scoring Buttons -->
-            <div class="flex gap-4">
+            <!-- Score buttons -->
+            <div class="flex gap-3">
                 <button
                     type="button"
                     onclick={() => submitAnswer(true)}
                     disabled={submittingAnswer || !selectedTeamId}
-                    class="flex-1 px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold text-lg disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    class="flex-1 py-4 bg-green-600 hover:bg-green-500 rounded-2xl font-black text-lg text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
                 >
-                    <svg
-                        class="w-6 h-6"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M5 13l4 4L19 7"
-                        />
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
                     </svg>
                     Correct (+${currentSlot.points})
                 </button>
@@ -420,20 +358,10 @@
                     type="button"
                     onclick={() => submitAnswer(false)}
                     disabled={submittingAnswer || !selectedTeamId}
-                    class="flex-1 px-6 py-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-bold text-lg disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    class="flex-1 py-4 bg-red-600 hover:bg-red-500 rounded-2xl font-black text-lg text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
                 >
-                    <svg
-                        class="w-6 h-6"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"
-                        />
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                     Incorrect (-${currentSlot.points})
                 </button>
@@ -444,42 +372,28 @@
 
 <!-- End Game Confirmation Modal -->
 {#if showEndGameConfirm}
-    <div
-        class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
-    >
-        <div class="bg-white rounded-lg max-w-md w-full p-6">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="bg-red-100 rounded-full p-3">
-                    <svg
-                        class="w-6 h-6 text-red-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                        />
+    <div class="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-[#0f172a] border border-white/10 rounded-3xl max-w-sm w-full p-7">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="bg-red-500/20 rounded-full p-3 shrink-0">
+                    <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                 </div>
-                <h3 class="text-xl font-bold text-gray-900">End Game?</h3>
+                <h3 class="text-white font-black text-xl">End Game?</h3>
             </div>
-            <p class="text-gray-600 mb-6">
-                Are you sure you want to end this game? This will mark the game
-                as completed and students will no longer be able to play. This
-                action cannot be undone.
+            <p class="text-white/50 text-sm mb-5">
+                Are you sure you want to end this game? Students will no longer be able to play and this action cannot be undone.
             </p>
             {#if endGameError}
-                <p class="text-red-600 text-sm mb-4">{endGameError}</p>
+                <p class="text-red-400 text-sm mb-4">{endGameError}</p>
             {/if}
             <div class="flex gap-3">
                 <button
                     type="button"
                     onclick={() => { showEndGameConfirm = false; resetEndGame(); }}
                     disabled={endingGame}
-                    class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50"
+                    class="bg-white/10 text-white/70 flex-1 py-3 rounded-2xl font-medium hover:bg-white/15 transition-colors disabled:opacity-50"
                 >
                     Cancel
                 </button>
@@ -487,7 +401,7 @@
                     type="button"
                     onclick={endGame}
                     disabled={endingGame}
-                    class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50"
+                    class="bg-red-600 text-white flex-1 py-3 rounded-2xl font-bold hover:bg-red-500 transition-colors disabled:opacity-50"
                 >
                     {endingGame ? "Ending..." : "End Game"}
                 </button>

@@ -12,19 +12,15 @@
     }
 </script>
 
-<div
-    class="flex-1 bg-blue-800 rounded-xl md:rounded-2xl p-3 md:p-6 lg:p-8 shadow-2xl flex flex-col"
->
+<div class="flex-1 bg-[#0f172a] flex flex-col min-h-0">
     <!-- Category Headers -->
-    <div
-        class="grid grid-cols-6 gap-1 md:gap-2 lg:gap-4 mb-1 md:mb-2 lg:mb-4 flex-shrink-0"
-    >
+    <div class="grid grid-cols-6 gap-1 md:gap-2 p-2 flex-shrink-0">
         {#each categories as category}
             <div
-                class="bg-blue-900 p-2 md:p-4 lg:p-6 rounded-lg md:rounded-xl text-center"
+                class="bg-white/5 border border-white/10 rounded-xl p-2 md:p-4 text-center"
             >
                 <h3
-                    class="text-yellow-400 font-bold text-xs md:text-lg lg:text-2xl uppercase tracking-wide line-clamp-2"
+                    class="text-yellow-400 font-bold text-xs md:text-sm lg:text-base uppercase tracking-widest line-clamp-2"
                 >
                     {category.name}
                 </h3>
@@ -33,28 +29,29 @@
     </div>
 
     <!-- Question Grid -->
-    <div class="grid grid-cols-6 gap-1 md:gap-2 lg:gap-4 flex-1">
+    <div class="grid grid-cols-6 gap-1 md:gap-2 flex-1 p-2 pt-0">
         {#each Array.from({ length: 5 }, (_, rowIndex) => rowIndex) as rowIndex}
             {#each categories as category}
                 {@const slot = category.slots.find((s) => s.row === rowIndex)}
                 {#if slot}
                     <div
                         class={`
-                            rounded-lg md:rounded-xl font-semibold text-xl md:text-3xl lg:text-5xl transition-all flex items-center justify-center
+                            rounded-xl font-semibold transition-all flex items-center justify-center
                             ${
                                 isSlotAnswered(slot.id)
-                                    ? "bg-blue-900/50 text-blue-700"
-                                    : "bg-blue-600 text-yellow-400"
+                                    ? "bg-white/5 text-white/10"
+                                    : "bg-blue-800 hover:bg-blue-700 text-yellow-400 font-black"
                             }
+                            ${slot.isDailyDouble && !isSlotAnswered(slot.id) ? "ring-2 ring-yellow-400" : ""}
                         `}
                     >
                         {#if !isSlotAnswered(slot.id)}
-                            <div class="text-center">
+                            <div class="text-center text-xl md:text-3xl lg:text-5xl">
                                 ${slot.points}
                             </div>
                         {:else}
                             <svg
-                                class="w-6 md:w-10 lg:w-12 h-6 md:h-10 lg:h-12"
+                                class="w-5 md:w-8 lg:w-10 h-5 md:h-8 lg:h-10 text-white/10"
                                 fill="currentColor"
                                 viewBox="0 0 20 20"
                             >

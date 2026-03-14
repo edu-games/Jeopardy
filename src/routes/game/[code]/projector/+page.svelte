@@ -1,7 +1,6 @@
 <script lang="ts">
     import type { PageData } from "./$types";
     import { onMount, onDestroy } from "svelte";
-    import ConnectionStatus from "$lib/components/ConnectionStatus.svelte";
     import JeopardyBoard from "$lib/components/JeopardyBoard.svelte";
     import QuestionDisplay from "$lib/components/QuestionDisplay.svelte";
 
@@ -17,6 +16,7 @@
     let connectionStatus = $state<"connected" | "connecting" | "disconnected">(
         "connecting",
     );
+    let teams = $state<any[]>([]);
     let ws: WebSocket | null = null;
 
     // Get current question slot if one is active
@@ -35,6 +35,11 @@
                   c.slots.some((s) => s.id === currentSlot.id),
               )
             : null,
+    );
+
+    // Sort teams by score descending for the scoreboard
+    const sortedTeams = $derived(
+        [...teams].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)),
     );
 
     function connect() {
@@ -56,6 +61,7 @@
                     case "answer-submitted":
                         answeredSlots = msg.answeredSlots;
                         currentSlotData = null;
+                        if (msg.teams) teams = msg.teams;
                         break;
 
                     case "game-started":
@@ -89,37 +95,31 @@
     <title>Jeopardy! - Projector View</title>
 </svelte:head>
 
-<div
-    class="fixed inset-0 bg-gradient-to-br from-blue-900 to-blue-700 flex flex-col p-4 md:p-6 lg:p-8"
->
-    <div class="flex-1 flex flex-col max-h-screen">
-        <!-- Header -->
-        <div class="mb-4 md:mb-6 flex-shrink-0">
-            <div class="flex items-start justify-between gap-4">
-                <!-- Center: Title and Connection Status -->
-                <div class="flex-1 text-center">
-                    <ConnectionStatus status={connectionStatus} />
-
-                    <h1
-                        class="text-3xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-1 md:mb-2"
-                    >
-                        Jeopardy!
-                    </h1>
-                </div>
-
-                <!-- Right: Game Code -->
-                <div
-                    class="bg-white/10 backdrop-blur-sm rounded-lg p-2 text-right"
-                >
-                    <p
-                        class="text-lg md:text-xl lg:text-2xl font-bold text-white/90 tracking-wider"
-                    >
-                        {data.game.code}
-                    </p>
-                </div>
-            </div>
+<div class="fixed inset-0 bg-[#0f172a] flex flex-col">
+    <!-- Top bar -->
+    <div class="shrink-0 px-6 py-4 border-b border-white/10 flex items-center justify-between gap-4">
+        <!-- Left: Title + connection dot -->
+        <div class="flex items-center gap-3">
+            <div
+                class={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                    connectionStatus === "connected"
+                        ? "bg-green-400"
+                        : "bg-white/20"
+                }`}
+            ></div>
+            <h1 class="text-yellow-400 font-black text-3xl md:text-4xl tracking-tight">
+                JEOPARDY!
+            </h1>
         </div>
 
+        <!-- Right: Game code pill -->
+        <div class="bg-white/5 border border-white/10 px-3 py-1 rounded-full text-white/60 text-sm font-mono tracking-widest">
+            {data.game.code}
+        </div>
+    </div>
+
+    <!-- Main area -->
+    <div class="flex-1 flex flex-col px-6 py-4 gap-4 min-h-0">
         {#if currentSlot && currentCategory}
             <QuestionDisplay
                 categoryName={currentCategory.name}
@@ -134,22 +134,40 @@
             />
         {/if}
 
-        <!-- Game Status Indicator -->
+        <!-- LOBBY status pill -->
         {#if data.game.status === "LOBBY"}
-            <div class="mt-4 md:mt-6 lg:mt-8 text-center flex-shrink-0">
-                <div
-                    class="inline-block bg-yellow-500 text-blue-900 px-6 md:px-8 py-3 md:py-4 rounded-full text-lg md:text-xl lg:text-2xl font-bold"
-                >
+            <div class="shrink-0 flex justify-center">
+                <div class="bg-yellow-500 text-blue-950 rounded-full px-8 py-3 text-xl font-black">
                     Game Starting Soon...
                 </div>
             </div>
         {:else if data.game.status === "COMPLETED"}
-            <div class="mt-4 md:mt-6 lg:mt-8 text-center flex-shrink-0">
-                <div
-                    class="inline-block bg-green-500 text-white px-6 md:px-8 py-3 md:py-4 rounded-full text-lg md:text-xl lg:text-2xl font-bold"
-                >
+            <div class="shrink-0 flex justify-center">
+                <div class="bg-green-500/20 border border-green-500/40 text-green-400 rounded-full px-8 py-3 text-xl font-black">
                     Game Complete!
                 </div>
+            </div>
+        {/if}
+
+        <!-- Bottom score strip -->
+        {#if sortedTeams.length > 0}
+            <div class="shrink-0 flex flex-wrap gap-2 justify-center pb-1">
+                {#each sortedTeams as team, i}
+                    <div
+                        class="flex items-center gap-2 px-4 py-2 rounded-full border"
+                        style={`background: ${team.color}15; border-color: ${team.color}40`}
+                    >
+                        <span class="text-white/30 text-xs font-mono">#{i + 1}</span>
+                        <div
+                            class="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={`background-color: ${team.color}`}
+                        ></div>
+                        <span class="text-white/70 text-sm font-medium">{team.name}</span>
+                        <span class="text-sm font-black" style={`color: ${team.color}`}>
+                            ${team.score ?? 0}
+                        </span>
+                    </div>
+                {/each}
             </div>
         {/if}
     </div>

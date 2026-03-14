@@ -13,7 +13,7 @@
     "db:migrate:prod": "wrangler d1 migrations apply jeopardy-db --remote",
     "cf:dev": "wrangler pages dev",
     "cf:deploy:do": "wrangler deploy --config wrangler.worker.json",
-    "cf:deploy:pages": "wrangler pages deploy",
+    "cf:deploy:pages": "npm run build && wrangler pages deploy",
     "cf:deploy": "npm run cf:deploy:do && npm run cf:deploy:pages"
   },
   "devDependencies": {
