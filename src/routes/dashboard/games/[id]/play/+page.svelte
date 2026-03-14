@@ -17,8 +17,10 @@
     } | null>(null);
     let showEndGameConfirm = $state(false);
     let endingGame = $state(false);
+    let endGameError = $state("");
 
     let ws: WebSocket | null = null;
+    let endGameTimeout: ReturnType<typeof setTimeout> | null = null;
 
     function send(msg: object) {
         if (ws && ws.readyState === WebSocket.OPEN) {
@@ -32,7 +34,18 @@
 
     function endGame() {
         endingGame = true;
+        endGameError = "";
         send({ type: "end-game" });
+        endGameTimeout = setTimeout(() => {
+            endingGame = false;
+            endGameError = "No response from server. Please try again.";
+        }, 8000);
+    }
+
+    function resetEndGame() {
+        endingGame = false;
+        endGameError = "";
+        if (endGameTimeout) { clearTimeout(endGameTimeout); endGameTimeout = null; }
     }
 
     function revealQuestion(slot: any) {
@@ -88,7 +101,13 @@
                         break;
                     }
 
+                    case "error":
+                        resetEndGame();
+                        submittingAnswer = false;
+                        break;
+
                     case "game-ended":
+                        if (endGameTimeout) clearTimeout(endGameTimeout);
                         window.location.href = "/dashboard/games";
                         break;
                 }
@@ -98,11 +117,11 @@
         };
 
         ws.onerror = () => console.error("[WS Instructor] Connection error");
-        ws.onclose = () => { endingGame = false; };
+        ws.onclose = () => resetEndGame();
     }
 
     onMount(connect);
-    onDestroy(() => ws?.close());
+    onDestroy(() => { ws?.close(); if (endGameTimeout) clearTimeout(endGameTimeout); });
 </script>
 
 <div
@@ -452,10 +471,13 @@
                 as completed and students will no longer be able to play. This
                 action cannot be undone.
             </p>
+            {#if endGameError}
+                <p class="text-red-600 text-sm mb-4">{endGameError}</p>
+            {/if}
             <div class="flex gap-3">
                 <button
                     type="button"
-                    onclick={() => (showEndGameConfirm = false)}
+                    onclick={() => { showEndGameConfirm = false; resetEndGame(); }}
                     disabled={endingGame}
                     class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50"
                 >
