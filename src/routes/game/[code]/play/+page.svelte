@@ -1,19 +1,21 @@
 <script lang="ts">
     import type { PageData } from "./$types";
-    import { onMount } from "svelte";
+    import { onMount, onDestroy } from "svelte";
 
     let { data }: { data: PageData } = $props();
 
     let buzzerPressed = $state(false);
-    let buzzerError = $state("");
     let pressingBuzzer = $state(false);
+    let buzzerError = $state("");
+    let wsConnected = $state(false);
 
-    // Real-time game state
     let teams = $state(data.game.teams);
+    let gameStatus = $state(data.game.status);
     let gameState = $state(data.game.gameState);
     let currentSlotData = $state<any>(null);
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    // Get current question slot if one is active
     const currentSlot = $derived(
         currentSlotData ||
             (gameState?.currentSlotId
@@ -31,410 +33,312 @@
             : null,
     );
 
-    const buzzerEnabled = $derived(gameState?.buzzerEnabled || false);
-
-    // My team's current data
+    const buzzerEnabled = $derived(gameState?.buzzerEnabled ?? false);
     const myTeam = $derived(teams.find((t) => t.id === data.student.team?.id));
+    const sortedTeams = $derived([...teams].sort((a, b) => b.score - a.score));
+    const myRank = $derived(sortedTeams.findIndex(t => t.id === myTeam?.id) + 1);
 
-    async function pressBuzzer() {
-        if (!buzzerEnabled || buzzerPressed || pressingBuzzer) {
-            return;
-        }
-
+    function pressBuzzer() {
+        if (!buzzerEnabled || buzzerPressed || pressingBuzzer || !ws) return;
         pressingBuzzer = true;
         buzzerError = "";
-
-        try {
-            const response = await fetch("/api/students/buzzer", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    studentId: data.student.id,
-                    gameId: data.game.id,
-                }),
-            });
-
-            if (response.ok) {
-                buzzerPressed = true;
-            } else {
-                const error = await response.json();
-                buzzerError = error.message || "Failed to press buzzer";
-            }
-        } catch (err) {
-            buzzerError = "An error occurred. Please try again.";
-        } finally {
-            pressingBuzzer = false;
-        }
+        ws.send(JSON.stringify({ type: "buzzer" }));
     }
 
-    // Set up Server-Sent Events for real-time updates
-    onMount(() => {
-        const eventSource = new EventSource(`/api/sse/${data.game.id}`);
+    function connect() {
+        if (ws) { ws.onclose = null; ws.close(); }
+        ws = new WebSocket(`/api/ws/${data.game.id}?role=student&studentId=${data.student.id}`);
+        ws.onopen = () => { wsConnected = true; };
 
-        eventSource.onmessage = (event) => {
+        ws.onmessage = (event) => {
             try {
-                const eventData = JSON.parse(event.data);
-                console.log("[SSE] Received event:", eventData.type);
-
-                switch (eventData.type) {
-                    case "connected":
-                        console.log(
-                            "[SSE] Connected with client ID:",
-                            eventData.clientId,
-                        );
-                        break;
-
+                const msg = JSON.parse(event.data);
+                switch (msg.type) {
                     case "question-revealed":
-                        // New question revealed
-                        currentSlotData = eventData.currentSlot;
+                        currentSlotData = msg.currentSlot;
                         if (gameState) {
-                            gameState.currentSlotId = eventData.slotId;
-                            gameState.buzzerEnabled = eventData.buzzerEnabled;
+                            gameState.currentSlotId = msg.slotId;
+                            gameState.buzzerEnabled = msg.buzzerEnabled;
                         }
-                        buzzerPressed = false; // Reset buzzer state for new question
+                        buzzerPressed = false;
                         buzzerError = "";
+                        pressingBuzzer = false;
                         break;
-
                     case "answer-submitted":
-                        // Answer was submitted, update scores and reset question
-                        console.log(
-                            "[SSE] Answer submitted, updating teams:",
-                            eventData.teams,
-                        );
-                        teams = eventData.teams;
+                        teams = msg.teams;
                         if (gameState) {
-                            gameState.answeredSlots = eventData.answeredSlots;
-                            gameState.currentSlotId = eventData.currentSlotId;
+                            gameState.answeredSlots = msg.answeredSlots;
+                            gameState.currentSlotId = msg.currentSlotId;
                             gameState.buzzerEnabled = false;
                         }
                         currentSlotData = null;
                         buzzerPressed = false;
+                        pressingBuzzer = false;
                         break;
-
+                    case "question-closed":
+                        currentSlotData = null;
+                        if (gameState) {
+                            gameState.currentSlotId = null;
+                            gameState.buzzerEnabled = false;
+                        }
+                        buzzerPressed = false;
+                        pressingBuzzer = false;
+                        break;
                     case "buzzer-pressed":
-                        // Someone buzzed in (could show notification)
-                        console.log(
-                            `[SSE] ${eventData.studentName} from ${eventData.teamName} buzzed in!`,
-                        );
+                        if (msg.studentId === data.student.id) buzzerPressed = true;
+                        pressingBuzzer = false;
+                        if (gameState) gameState.buzzerEnabled = false;
                         break;
-
+                    case "buzzer-enabled":
+                        if (gameState) gameState.buzzerEnabled = true;
+                        buzzerPressed = false;
+                        pressingBuzzer = false;
+                        break;
+                    case "team-assigned":
+                        teams = msg.teams;
+                        break;
+                    case "error":
+                        if (pressingBuzzer) {
+                            buzzerError = "Too slow!";
+                            pressingBuzzer = false;
+                        }
+                        break;
                     case "game-started":
-                        // Game started, reload to show game
-                        window.location.reload();
+                        gameStatus = "IN_PROGRESS";
                         break;
-
                     case "game-ended":
-                        // Game ended, redirect to results page
+                        localStorage.removeItem(storageKey);
                         window.location.href = `/game/${data.game.code}/results?studentId=${data.student.id}`;
                         break;
                 }
-            } catch (error) {
-                console.error("[SSE] Error parsing event:", error);
+            } catch (err) {
+                console.error("[WS] Error:", err);
             }
         };
 
-        eventSource.onerror = (error) => {
-            console.error("[SSE] Connection error:", error);
-            eventSource.close();
+        ws.onclose = () => {
+            wsConnected = false;
+            reconnectTimer = setTimeout(connect, 2500);
         };
 
-        // Cleanup on unmount
-        return () => {
-            eventSource.close();
-        };
+        ws.onerror = () => { pressingBuzzer = false; };
+    }
+
+    const storageKey = `jeopardy_session_${data.game.code}`;
+
+    onMount(() => {
+        localStorage.setItem(storageKey, JSON.stringify({ studentId: data.student.id, name: data.student.name }));
+        connect();
+    });
+
+    onDestroy(() => {
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        if (ws) { ws.onclose = null; ws.close(); }
     });
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 p-4">
-    <div class="max-w-4xl mx-auto">
-        <!-- Header with Student Info -->
-        <div class="mb-6 bg-white/10 backdrop-blur-sm rounded-lg p-6">
+<div class="h-dvh flex flex-col overflow-hidden select-none font-sans bg-gray-50">
+
+    <!-- Header -->
+    <header class="shrink-0 bg-white border-b border-gray-100 px-5 py-3">
+        <div class="flex items-center justify-between">
+            <!-- Team badge -->
+            <div class="flex items-center gap-2">
+                {#if myTeam}
+                    <div class="w-8 h-8 rounded-full border-2 border-white shadow-sm"
+                         style="background-color: {myTeam.color}"></div>
+                    <div>
+                        <p class="text-gray-400 text-[10px] uppercase tracking-widest leading-none">Team</p>
+                        <p class="text-gray-900 font-bold text-sm leading-tight">{myTeam.name}</p>
+                    </div>
+                {:else}
+                    <div class="px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200">
+                        <p class="text-amber-600 text-xs font-medium">Awaiting team</p>
+                    </div>
+                {/if}
+            </div>
+
+            <!-- Player name -->
             <div class="text-center">
-                <h1 class="text-3xl font-bold text-white mb-2">Jeopardy!</h1>
-                <p class="text-blue-200 text-lg">
-                    Welcome, {data.student.name}!
-                </p>
+                <p class="text-gray-400 text-[10px] uppercase tracking-widest leading-none">Player</p>
+                <p class="text-gray-900 font-semibold text-sm">{data.student.name}</p>
+            </div>
+
+            <!-- Score -->
+            <div class="text-right">
+                {#if myTeam}
+                    <p class="text-gray-400 text-[10px] uppercase tracking-widest leading-none">Score</p>
+                    <p class="font-black text-lg leading-tight" style="color: {myTeam.color}">${myTeam.score.toLocaleString()}</p>
+                {:else}
+                    <div class="w-14"></div>
+                {/if}
             </div>
         </div>
+    </header>
 
-        <!-- Team Info -->
-        {#if myTeam}
-            <div
-                class="mb-6 p-6 rounded-lg"
-                style={`background-color: ${myTeam.color}20; border: 3px solid ${myTeam.color}`}
-            >
-                <div class="text-center">
-                    <div class="flex items-center justify-center gap-3 mb-3">
-                        <div
-                            class="w-6 h-6 rounded-full"
-                            style={`background-color: ${myTeam.color}`}
-                        ></div>
-                        <h2 class="text-2xl font-bold text-white">
-                            {myTeam.name}
-                        </h2>
-                    </div>
-                    <div class="text-5xl font-bold text-white mb-2">
-                        ${myTeam.score}
-                    </div>
-                    <p class="text-blue-200">Your Team's Score</p>
-                </div>
-            </div>
-        {:else}
-            <div
-                class="mb-6 p-6 bg-yellow-50 border-3 border-yellow-300 rounded-lg"
-            >
-                <p class="text-yellow-800 font-medium text-center text-lg">
-                    ⏳ Waiting for team assignment
-                </p>
-                <p class="text-sm text-yellow-700 mt-2 text-center">
-                    The instructor will assign you to a team shortly
-                </p>
-            </div>
-        {/if}
+    <!-- Main content area -->
+    <main class="flex-1 flex flex-col px-5 pb-4 pt-4 min-h-0 gap-3">
 
-        <!-- Game Status -->
-        {#if data.game.status === "LOBBY"}
-            <div
-                class="bg-white/10 backdrop-blur-sm rounded-lg p-8 text-center"
-            >
-                <div class="animate-pulse mb-4">
-                    <svg
-                        class="w-16 h-16 mx-auto text-blue-300"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                    </svg>
+        {#if gameStatus === "LOBBY"}
+            <div class="flex-1 flex flex-col items-center justify-center text-center gap-6">
+                <div class="relative">
+                    <div class="w-24 h-24 rounded-full border-2 flex items-center justify-center bg-white shadow-sm"
+                         style="border-color: {myTeam ? myTeam.color + '60' : '#f59e0b60'}">
+                        <div class="absolute inset-0 rounded-full animate-ping opacity-20"
+                             style="background: {myTeam?.color ?? '#f59e0b'}"></div>
+                        <span class="text-4xl relative z-10">👋</span>
+                    </div>
                 </div>
-                <h3 class="text-2xl font-bold text-white mb-2">
-                    Game Starting Soon
-                </h3>
-                <p class="text-blue-200">
-                    Wait for the instructor to start the game. Stay on this
-                    page!
-                </p>
+                <div>
+                    <h1 class="text-gray-900 font-black text-3xl mb-2">You're in!</h1>
+                    <p class="text-gray-400 text-base">Waiting for the instructor<br>to start the game...</p>
+                </div>
+                {#if myTeam}
+                    <div class="px-5 py-3 rounded-2xl border bg-white shadow-sm"
+                         style="border-color: {myTeam.color}40">
+                        <p class="font-bold text-gray-900">{myTeam.name}</p>
+                        <p class="text-gray-400 text-sm">Your team</p>
+                    </div>
+                {/if}
             </div>
-        {:else if data.game.status === "IN_PROGRESS"}
-            <!-- Current Question Info -->
+
+        {:else if gameStatus === "IN_PROGRESS"}
             {#if currentSlot && currentCategory}
-                <div class="mb-6 bg-blue-800 rounded-lg p-6">
-                    <div class="text-center mb-4">
-                        <div class="text-yellow-400 font-semibold text-lg mb-1">
-                            {currentCategory.name}
-                        </div>
-                        <div class="text-4xl font-bold text-yellow-400">
-                            ${currentSlot.points}
-                        </div>
+                <!-- Category + points -->
+                <div class="shrink-0 flex items-center justify-between px-4 py-2.5 rounded-2xl bg-white border border-gray-100 shadow-sm">
+                    <p class="text-gray-500 text-sm font-semibold uppercase tracking-wide">{currentCategory.name}</p>
+                    <div class="flex items-center gap-2">
                         {#if currentSlot.isDailyDouble}
-                            <div
-                                class="mt-3 inline-block px-4 py-2 bg-yellow-500 text-blue-900 rounded-full text-sm font-bold"
-                            >
-                                DAILY DOUBLE
-                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-amber-400 text-white">DD</span>
                         {/if}
+                        <p class="text-amber-500 font-black text-lg">${currentSlot.points}</p>
                     </div>
+                </div>
 
-                    <!-- Clue Display -->
-                    <div class="bg-blue-700 rounded-lg p-6 mb-4">
-                        <p
-                            class="text-sm text-blue-300 mb-2 uppercase tracking-wide text-center"
-                        >
-                            Clue
-                        </p>
-                        <p class="text-xl text-white text-center">
-                            {currentSlot.question.answer}
-                        </p>
-                    </div>
+                <!-- Clue card — keep it bold and colorful as a focal point -->
+                <div class="flex-1 rounded-3xl flex items-center justify-center p-6 min-h-0 shadow-sm"
+                     style="background: linear-gradient(135deg, #1e3a8a, #1d4ed8)">
+                    <p class="text-white text-2xl font-bold text-center leading-snug tracking-wide">
+                        {currentSlot.question.answer}
+                    </p>
+                </div>
 
-                    <!-- Buzzer Button -->
+                <!-- Buzzer area -->
+                <div class="shrink-0 flex flex-col items-center gap-3 pb-1">
                     {#if buzzerEnabled && !buzzerPressed}
+                        {#if buzzerError}
+                            <p class="text-red-500 text-sm font-medium">{buzzerError}</p>
+                        {/if}
                         <button
                             type="button"
                             onclick={pressBuzzer}
                             disabled={pressingBuzzer}
-                            class="w-full py-12 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-lg font-bold text-4xl transition-all shadow-2xl disabled:bg-gray-600 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95"
+                            class="w-44 h-44 rounded-full font-black text-2xl tracking-widest uppercase transition-transform active:scale-90 disabled:opacity-60 border-4 border-red-300/40"
+                            style="background: radial-gradient(circle at 35% 35%, #ef4444, #991b1b); box-shadow: 0 0 40px rgba(239,68,68,0.35), 0 8px 32px rgba(239,68,68,0.2), inset 0 2px 8px rgba(255,255,255,0.15)"
                         >
                             {#if pressingBuzzer}
-                                <svg
-                                    class="animate-spin h-12 w-12 mx-auto"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <circle
-                                        class="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        stroke-width="4"
-                                    ></circle>
-                                    <path
-                                        class="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                    ></path>
+                                <svg class="animate-spin h-10 w-10 mx-auto text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                             {:else}
-                                🔴 BUZZ IN!
+                                <span class="text-white drop-shadow-lg">BUZZ!</span>
                             {/if}
                         </button>
+                        <p class="text-gray-400 text-xs">Tap to buzz in</p>
 
-                        {#if buzzerError}
-                            <div
-                                class="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded"
-                            >
-                                {buzzerError}
-                            </div>
-                        {/if}
                     {:else if buzzerPressed}
-                        <div class="bg-green-600 rounded-lg p-8 text-center">
-                            <svg
-                                class="w-16 h-16 mx-auto text-white mb-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
+                        <div class="w-44 h-44 rounded-full flex flex-col items-center justify-center border-4 border-green-300/50"
+                             style="background: radial-gradient(circle at 35% 35%, #16a34a, #14532d); box-shadow: 0 0 40px rgba(34,197,94,0.35), 0 8px 32px rgba(34,197,94,0.2)">
+                            <svg class="w-12 h-12 text-white mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
                             </svg>
-                            <h3 class="text-2xl font-bold text-white mb-2">
-                                You Buzzed In!
-                            </h3>
-                            <p class="text-green-100">
-                                Wait for the instructor to call on your team.
-                            </p>
+                            <p class="text-white font-black text-sm uppercase tracking-wide">You're in!</p>
                         </div>
+                        <p class="text-green-600 text-sm font-medium">Wait for the instructor</p>
+
                     {:else}
-                        <div class="bg-gray-600 rounded-lg p-8 text-center">
-                            <svg
-                                class="w-16 h-16 mx-auto text-gray-400 mb-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                />
+                        <div class="w-44 h-44 rounded-full flex flex-col items-center justify-center border-4 border-gray-200 bg-white shadow-sm">
+                            <svg class="w-10 h-10 text-gray-300 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
-                            <h3 class="text-xl font-bold text-white mb-2">
-                                Buzzer Locked
-                            </h3>
-                            <p class="text-gray-300">
-                                {#if currentSlot.isDailyDouble}
-                                    This is a Daily Double. Your team cannot
-                                    buzz in.
-                                {:else}
-                                    Wait for the instructor to unlock the
-                                    buzzer.
-                                {/if}
-                            </p>
+                            <p class="text-gray-300 font-bold text-sm uppercase tracking-wide">Locked</p>
+                        </div>
+                        <p class="text-gray-400 text-xs">
+                            {currentSlot.isDailyDouble ? "Daily Double" : "Wait for the buzzer"}
+                        </p>
+                    {/if}
+                </div>
+
+            {:else}
+                <!-- Waiting for question -->
+                <div class="flex-1 flex flex-col items-center justify-center text-center gap-5">
+                    <div class="relative w-24 h-24 flex items-center justify-center">
+                        <div class="absolute inset-0 rounded-full border-2 border-gray-200 animate-spin" style="border-top-color: {myTeam?.color ?? '#f59e0b'}"></div>
+                        <span class="text-3xl">🎯</span>
+                    </div>
+                    <div>
+                        <h2 class="text-gray-900 font-black text-2xl">Get ready!</h2>
+                        <p class="text-gray-400 text-sm mt-1">The instructor is picking a question</p>
+                    </div>
+                    {#if myTeam}
+                        <div class="px-4 py-2 rounded-xl text-sm font-bold bg-white border shadow-sm"
+                             style="border-color: {myTeam.color}30; color: {myTeam.color}">
+                            #{myRank} · {myTeam.name} · ${myTeam.score.toLocaleString()}
                         </div>
                     {/if}
                 </div>
-            {:else}
-                <div
-                    class="bg-white/10 backdrop-blur-sm rounded-lg p-8 text-center"
-                >
-                    <div class="animate-pulse mb-4">
-                        <svg
-                            class="w-16 h-16 mx-auto text-blue-300"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                    </div>
-                    <h3 class="text-2xl font-bold text-white mb-2">
-                        Waiting for Next Question
-                    </h3>
-                    <p class="text-blue-200">
-                        The instructor will select a question shortly.
-                    </p>
-                </div>
             {/if}
 
-            <!-- All Teams Scoreboard -->
-            <div class="mt-6 bg-white/10 backdrop-blur-sm rounded-lg p-6">
-                <h3 class="text-xl font-bold text-white mb-4 text-center">
-                    All Teams
-                </h3>
-                <div class="grid grid-cols-2 gap-3">
-                    {#each teams as team (team.id)}
-                        <div
-                            class="p-4 rounded-lg text-center {team.id ===
-                            myTeam?.id
-                                ? 'ring-4 ring-white'
-                                : ''}"
-                            style={`background-color: ${team.color}30; border: 2px solid ${team.color}`}
-                        >
-                            <div
-                                class="flex items-center justify-center gap-2 mb-1"
-                            >
-                                <div
-                                    class="w-3 h-3 rounded-full"
-                                    style={`background-color: ${team.color}`}
-                                ></div>
-                                <p class="font-semibold text-white text-sm">
-                                    {team.name}
-                                </p>
-                            </div>
-                            <p class="text-2xl font-bold text-white">
-                                ${team.score}
-                            </p>
-                        </div>
-                    {/each}
+        {:else if gameStatus === "COMPLETED"}
+            <div class="flex-1 flex flex-col items-center justify-center text-center gap-5">
+                <div class="text-7xl">🏆</div>
+                <div>
+                    <h2 class="text-gray-900 font-black text-3xl">Game over!</h2>
+                    <p class="text-gray-400 mt-1">Thanks for playing</p>
                 </div>
-            </div>
-        {:else if data.game.status === "COMPLETED"}
-            <div
-                class="bg-white/10 backdrop-blur-sm rounded-lg p-8 text-center"
-            >
-                <svg
-                    class="w-16 h-16 mx-auto text-yellow-400 mb-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-                    />
-                </svg>
-                <h3 class="text-2xl font-bold text-white mb-2">
-                    Game Complete!
-                </h3>
-                <p class="text-blue-200 mb-4">Thanks for playing!</p>
-                <a
-                    href="/game/{data.game.code}/results?studentId={data.student
-                        .id}"
-                    class="inline-block px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium"
-                >
-                    View Results
+                {#if myTeam}
+                    <div class="px-5 py-4 rounded-2xl bg-white border shadow-sm text-center"
+                         style="border-color: {myTeam.color}30">
+                        <p class="text-gray-400 text-xs uppercase tracking-widest">Final score</p>
+                        <p class="font-black text-3xl mt-0.5" style="color: {myTeam.color}">${myTeam.score.toLocaleString()}</p>
+                        <p class="text-gray-500 text-sm">{myTeam.name} · #{myRank}</p>
+                    </div>
+                {/if}
+                <a href="/game/{data.game.code}/results?studentId={data.student.id}"
+                   class="px-8 py-4 rounded-2xl font-black text-lg text-white hover:brightness-105 transition-all"
+                   style="background: #f59e0b">
+                    See Results
                 </a>
             </div>
         {/if}
-    </div>
+
+    </main>
+
+    <!-- Score strip -->
+    {#if gameStatus === "IN_PROGRESS"}
+        <div class="shrink-0 bg-white border-t border-gray-100 px-4 py-3">
+            <div class="flex gap-2 overflow-x-auto" style="scrollbar-width: none">
+                {#each sortedTeams as team, i (team.id)}
+                    <div class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-all
+                                {team.id === myTeam?.id ? 'shadow-sm' : ''}"
+                         style="background: {team.color}10; border-color: {team.color}30; {team.id === myTeam?.id ? `box-shadow: 0 0 0 2px ${team.color}40` : ''}">
+                        <span class="text-gray-400 text-[10px] font-bold">#{i+1}</span>
+                        <div class="w-2 h-2 rounded-full" style="background-color: {team.color}"></div>
+                        <span class="text-gray-700 font-medium">{team.name}</span>
+                        <span class="font-black" style="color: {team.color}">${team.score.toLocaleString()}</span>
+                    </div>
+                {/each}
+            </div>
+        </div>
+    {/if}
+
+    <!-- Disconnected banner -->
+    {#if !wsConnected}
+        <div class="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 py-2 bg-gray-900/80 backdrop-blur-sm">
+            <div class="w-2 h-2 rounded-full bg-red-400 animate-pulse"></div>
+            <p class="text-white/80 text-xs">Reconnecting...</p>
+        </div>
+    {/if}
+
 </div>

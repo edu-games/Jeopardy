@@ -1,194 +1,236 @@
-# Classroom Jeopardy Game
+# Classroom Jeopardy
 
-A web-based Jeopardy game built for classroom settings where an instructor manages the game and students participate in teams.
+A real-time multiplayer Jeopardy game for classrooms. Instructors build boards, run games, and control gameplay from a dashboard. Students join via a game code and buzz in from their phones. A projector view displays the board for the room.
 
 ## Tech Stack
 
-- **Frontend**: SvelteKit + Tailwind CSS
-- **Database**: Neon (Serverless Postgres)
-- **ORM**: Prisma
-- **Hosting**: Vercel
-- **Real-time**: Server-Sent Events (SSE)
+- **Frontend/API**: SvelteKit (Svelte 5) + Tailwind CSS
+- **Database**: Cloudflare D1 (SQLite) via Drizzle ORM
+- **Real-time**: Cloudflare Durable Objects (WebSocket Hibernation API)
+- **Hosting**: Cloudflare Pages + Workers
 
-## Getting Started
+---
 
-### 1. Install Dependencies
+## Architecture
 
-```bash
-npm install
+### Cloudflare Deployment
+
+The app is split across two Cloudflare resources that must both be deployed:
+
+```
+┌─────────────────────────────────────────────┐     ┌──────────────────────────────────────┐
+│  CF Pages: classroom-jeopardy               │     │  CF Worker: classroom-jeopardy-do    │
+│  (wrangler.json)                            │     │  (wrangler.worker.json)              │
+│                                             │     │                                      │
+│  - Serves all pages & routes                │     │  - Hosts GameHub Durable Object      │
+│  - REST API (boards, games, questions, etc) │     │  - Manages WebSocket connections     │
+│  - Auth (instructor sessions)               │     │  - Handles real-time game events     │
+│  - Bound to D1 database            ─────────┼─┐   │  - Bound to D1 database              │
+│  - Bound to GAME_HUB namespace     ─────────┼─┼──►│  - Bound to GAME_HUB (self)          │
+└─────────────────────────────────────────────┘ │   └──────────────────────────────────────┘
+                                                 │                    │
+                                                 └────────┬───────────┘
+                                                          ▼
+                                             ┌────────────────────────┐
+                                             │  D1: jeopardy-db       │
+                                             │  (shared SQLite DB)    │
+                                             └────────────────────────┘
 ```
 
-### 2. Set Up Database
+The Worker must be deployed before the Pages project, as Pages validates that `classroom-jeopardy-do` exists when processing its `GAME_HUB` binding.
 
-1. Create a free account at [Neon](https://neon.tech)
-2. Create a new project and database
-3. Copy your connection string
-4. Update `.env` file with your database URL:
+### Real-time Flow
 
-```env
-DATABASE_URL="your-neon-connection-string-here"
+Each game has one `GameHub` Durable Object instance, keyed by `gameId`. The DO uses the WebSocket Hibernation API — it sleeps between messages to keep costs low.
+
+```
+Instructor browser          Student browser(s)          Projector browser
+       │                           │                            │
+       │ WS /api/ws/[gameId]       │                            │
+       │    ?role=instructor       │ WS /api/ws/[gameId]        │
+       │──────────────────────────►│    ?role=student           │
+       │                           │───────────────────────────►│
+       │                           │     WS /api/ws/[gameId]    │
+       │                           │         ?role=projector    │
+       │                           │────────────────────────────►
+       │                                                        │
+       │          All connections land in the same GameHub DO   │
+       │◄──────────────────── broadcast() ─────────────────────►│
 ```
 
-### 3. Run Database Migrations
+WebSocket connections are proxied through the Pages API (`/api/ws/[gameId]`), which looks up the game in D1, gets the `GameHub` stub for that `gameId`, and upgrades the connection into the DO.
 
-```bash
-npx prisma migrate dev
+### D1 Database Schema
+
+```
+instructors ──┬── questions ──── question_tags ──── tags
+              │
+              ├── boards ──── categories ──── board_question_slots ──── questions
+              │
+              └── games ──┬── teams ──── students
+                          ├── students
+                          └── game_state
 ```
 
-This will create all the necessary tables in your database.
+| Table | Purpose |
+|---|---|
+| `instructors` | Authenticated teacher accounts |
+| `sessions` | Instructor login sessions |
+| `questions` | Question bank (clue shown + correct response) |
+| `tags` | Labels for filtering questions |
+| `boards` | A named set of categories and questions |
+| `categories` | Column headers on a board (up to 6) |
+| `board_question_slots` | Each cell: category + question + points + row/column position |
+| `games` | A running or completed game instance with a join code |
+| `teams` | Teams within a game, with scores |
+| `students` | Players who joined a game |
+| `game_state` | Live state: current question, answered slots, buzzer status |
 
-### 4. Generate Session Secret
+### WebSocket Message Protocol
 
-Generate a secure session secret:
+All messages are JSON. Clients send to the GameHub DO:
 
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+| Message | Sent by | Description |
+|---|---|---|
+| `start-game` | instructor | Transitions game `LOBBY` → `IN_PROGRESS` |
+| `end-game` | instructor | Transitions game to `COMPLETED`, broadcasts final scores |
+| `reveal-question` | instructor | Opens a question slot, broadcasts clue to all clients |
+| `answer` | instructor | Marks answer correct/incorrect, updates team score |
+| `enable-buzzer` | instructor | Re-opens the buzzer for the next student to buzz in |
+| `assign-team` | instructor | Assigns a student to a team |
+| `buzzer` | student | First buzz-in; disables buzzer for others, broadcasts winner |
 
-Add it to your `.env` file:
+The DO broadcasts events back to all connected clients (`game-started`, `question-revealed`, `buzzer-pressed`, `answer-submitted`, `team-assigned`, etc.).
 
-```env
-SESSION_SECRET="your-generated-secret-here"
-```
-
-### 5. Start Development Server
-
-```bash
-npm run dev
-```
-
-The app will be available at `http://localhost:5173`
+---
 
 ## Project Structure
 
 ```
 src/
-├── routes/              # SvelteKit file-based routing
-│   ├── +page.svelte    # Landing page
-│   ├── login/          # Login page
-│   ├── register/       # Registration page
-│   ├── dashboard/      # Protected instructor dashboard
-│   └── api/            # API endpoints
 ├── lib/
-│   ├── components/     # Reusable Svelte components
-│   └── server/         # Server-only code (Prisma, auth, etc.)
-└── app.css            # Tailwind CSS imports
+│   ├── server/
+│   │   ├── game-hub.ts       # GameHub Durable Object (WebSocket + game logic)
+│   │   ├── schema.ts         # Drizzle ORM schema
+│   │   ├── db.ts             # D1 database initializer
+│   │   ├── auth.ts           # Session auth helpers
+│   │   └── qr.ts             # QR code generation for join links
+│   └── components/           # Svelte UI components
+├── routes/
+│   ├── api/
+│   │   ├── ws/[gameId]/      # WebSocket upgrade → GameHub DO
+│   │   ├── games/            # Game CRUD
+│   │   ├── boards/           # Board CRUD
+│   │   ├── questions/        # Question bank (incl. import/export)
+│   │   ├── students/join/    # Student join endpoint
+│   │   └── auth/logout/
+│   ├── dashboard/            # Instructor UI
+│   │   └── games/[id]/
+│   │       ├── lobby/        # Pre-game lobby with student list
+│   │       ├── play/         # Instructor game control view
+│   │       └── results/      # Post-game scores
+│   └── game/[code]/
+│       ├── play/             # Student game view (buzzer)
+│       ├── projector/        # Room display view
+│       └── results/          # End-of-game results
+├── do-worker.ts              # DO Worker entry point (exports GameHub)
+└── app.d.ts                  # Cloudflare env type declarations
 
-prisma/
-└── schema.prisma      # Database schema
+drizzle/                      # D1 migration files
+wrangler.json                 # Pages config (binds D1 + GAME_HUB)
+wrangler.worker.json          # DO Worker config (defines GameHub + migrations)
 ```
 
-## Features
+---
 
-### ✅ Implemented (Phases 1-5)
+## Game Flow
 
-- **Authentication System**: Secure instructor login and registration
-- **Question Bank Management**:
-  - Create, edit, and delete questions
-  - Search and filter questions by text or tags
-  - Tag system for categorization
-  - Export questions to JSON
-  - Import questions from JSON
-  - Reusable questions across multiple boards
-- **Board Management**:
-  - Create custom Jeopardy boards with 6 categories
-  - Select questions from question bank for each slot (5 per category)
-  - Assign custom point values (default 200-1000)
-  - Mark Daily Doubles
-  - Edit and delete boards
-  - Progress tracking and validation
-  - Visual board preview
-- **Game Creation & Setup**:
-  - Create games from complete boards
-  - Generate QR codes for student join
-  - Configure 2-6 teams with custom names and colors
-  - Manual or automatic team assignment
-  - Game lobby with real-time student tracking
-  - Copy join URL for easy sharing
-- **Student Join Flow**:
-  - Scan QR code or enter game code
-  - Enter name to join game
-  - Automatic or manual team assignment
-  - Team confirmation screen
-- **Instructor Game Play**:
-  - Classic Jeopardy board UI with blue/gold theme
-  - 6x5 grid of clickable question cards
-  - Real-time team scoreboard
-  - Question reveal modal with clue and response
-  - Team selection for answering
-  - Correct/Incorrect scoring buttons
-  - Automatic score calculation (+/- points)
-  - Visual feedback for answered questions
-  - Daily Double indication
-  - Progress tracking
-- **Dashboard**: Protected instructor area with quick actions
+```
+Instructor creates game
+        │
+        ▼
+Students join via code / QR ──► LOBBY (waiting room)
+        │
+        ▼  instructor clicks Start
+   IN_PROGRESS
+        │
+        ├── instructor reveals a question slot
+        │         │
+        │         ▼
+        │   students buzz in ──► first buzz locks others out
+        │         │
+        │         ▼
+        │   instructor marks correct / incorrect ──► score updates broadcast
+        │         │
+        │         └── repeat until board complete
+        │
+        ▼  instructor clicks End
+   COMPLETED ──► results page (scores ranked by team)
+```
 
-- **Student Game View**:
-  - Scan QR code or enter game code to join
-  - Team assignment and score display
-  - Live question clues when revealed by instructor
-  - Interactive buzzer button (large, red, prominent)
-  - Buzzer enabled/disabled states based on game rules
-  - Visual feedback for buzzer presses
-  - All teams scoreboard
-  - Waiting states for lobby and between questions
-  - Daily Double indication
-
-- **Real-time Updates** (SSE):
-  - Server-Sent Events for live game synchronization
-  - Real-time score updates across all clients
-  - Buzzer press notifications to instructor
-  - Question reveal broadcast to all students
-  - Automatic state synchronization
-
-### 🚧 Coming Next (Phase 8+)
-
-- **Advanced Features**: Final Jeopardy, sound effects, animations
-- **Game History**: View past games and results
-- **Enhanced UI**: Transitions, animations, sound effects
+---
 
 ## Development
 
-### Prisma Commands
-
 ```bash
-# Create a new migration
-npx prisma migrate dev --name migration_name
+npm install
 
-# Reset database
-npx prisma migrate reset
+# Local dev server
+npm run dev
 
-# Open Prisma Studio (database GUI)
-npx prisma studio
+# Local Cloudflare Pages dev (with D1 + DO)
+npm run cf:dev
 
-# Generate Prisma Client (after schema changes)
-npx prisma generate
+# Type checking
+npm run check
 ```
 
-### Build for Production
+### Database
 
 ```bash
-npm run build
-npm run preview
+# Generate a new migration after schema changes
+npm run db:generate
+
+# Apply migrations locally
+npm run db:migrate:local
+
+# Apply migrations to production D1
+npm run db:migrate:prod
 ```
+
+---
 
 ## Deployment
 
-This project is configured for Vercel deployment:
+The DO Worker must be deployed before the Pages project. The `cf:deploy` script handles ordering:
 
-1. Push your code to GitHub
-2. Import project in Vercel
-3. Add environment variables in Vercel dashboard
-4. Deploy!
+```bash
+# 1. Build the SvelteKit app
+npm run build
 
-## Environment Variables
+# 2. Deploy DO Worker, then Pages project
+npm run cf:deploy
+```
 
-Required environment variables (see `.env.example`):
+Or deploy individually:
 
-- `DATABASE_URL` - Neon Postgres connection string
-- `SESSION_SECRET` - Random secret for session encryption
-- `PUBLIC_APP_URL` - Your app's public URL
-- `NODE_ENV` - Environment (development/production)
+```bash
+npm run cf:deploy:do     # deploys classroom-jeopardy-do Worker (GameHub DO)
+npm run cf:deploy:pages  # deploys classroom-jeopardy Pages project
+```
+
+> On the first deploy of the DO Worker, wrangler will prompt to confirm the Durable Object migration. Type `y` to proceed.
+
+---
+
+## Features
+
+- **Instructor dashboard**: manage question banks (with tag filtering, JSON import/export), boards, and games
+- **Game lobby**: students join by code or QR scan, instructor assigns teams manually or randomly
+- **Live gameplay**: instructor controls question reveal; students buzz in from their phones
+- **Projector view**: full-screen board display for the classroom
+- **Scoring**: automatic point tracking with correct/incorrect buttons; Daily Double support
+- **Results**: ranked final scores after game ends
 
 ## License
 

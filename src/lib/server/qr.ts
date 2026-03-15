@@ -10,15 +10,16 @@ export async function generateGameQRCode(
   const joinUrl = `${baseUrl}/game/${gameCode}/join`;
 
   try {
-    const qrDataUrl = await QRCode.toDataURL(joinUrl, {
-      width: 300,
+    const svgString = await QRCode.toString(joinUrl, {
+      type: "svg",
       margin: 2,
       color: {
         dark: "#000000",
         light: "#FFFFFF",
       },
     });
-    return qrDataUrl;
+    const base64 = btoa(svgString);
+    return `data:image/svg+xml;base64,${base64}`;
   } catch (error) {
     console.error("Failed to generate QR code:", error);
     throw new Error("Failed to generate QR code");

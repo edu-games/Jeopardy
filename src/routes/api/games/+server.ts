@@ -1,101 +1,85 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import prisma from '$lib/server/prisma';
-import { generateGameCode } from '$lib/server/qr';
+import { json, error } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import { getDb } from "$lib/server/db";
+import { games, teams, gameState, boards } from "$lib/server/schema";
+import { eq } from "drizzle-orm";
+import { createId } from "@paralleldrive/cuid2";
+import { generateGameCode } from "$lib/server/qr";
 
-// POST /api/games - Create a new game
-export const POST: RequestHandler = async ({ locals, request }) => {
-	if (!locals.instructor) {
-		throw error(401, 'Unauthorized');
-	}
+export const POST: RequestHandler = async ({ locals, request, platform }) => {
+	if (!locals.instructor) throw error(401, "Unauthorized");
 
 	const data = await request.json();
 	const { boardId, teamCount, teamAssignment, teamNames, teamColors } = data;
 
-	// Validation
-	if (!boardId || typeof boardId !== 'string') {
-		throw error(400, 'Board ID is required');
+	if (!boardId || typeof boardId !== "string") throw error(400, "Board ID is required");
+	if (typeof teamCount !== "number" || teamCount < 2 || teamCount > 6) {
+		throw error(400, "Team count must be between 2 and 6");
+	}
+	if (!teamAssignment || !["MANUAL", "RANDOM"].includes(teamAssignment)) {
+		throw error(400, "Team assignment must be MANUAL or RANDOM");
 	}
 
-	if (typeof teamCount !== 'number' || teamCount < 2 || teamCount > 6) {
-		throw error(400, 'Team count must be between 2 and 6');
-	}
+	const db = getDb(platform!.env.DB);
 
-	if (!teamAssignment || !['MANUAL', 'RANDOM'].includes(teamAssignment)) {
-		throw error(400, 'Team assignment must be MANUAL or RANDOM');
-	}
-
-	// Verify board exists and belongs to instructor
-	const board = await prisma.board.findFirst({
-		where: {
-			id: boardId,
-			instructorId: locals.instructor.id
-		},
-		include: {
-			categories: {
-				include: {
-					slots: true
-				}
-			}
-		}
+	const board = await db.query.boards.findFirst({
+		where: (b, { eq, and }) => and(eq(b.id, boardId), eq(b.instructorId, locals.instructor!.id)),
+		with: { categories: { with: { slots: true } } }
 	});
 
-	if (!board) {
-		throw error(404, 'Board not found');
-	}
+	if (!board) throw error(404, "Board not found");
 
-	// Verify board is complete (30 slots)
 	const totalSlots = board.categories.reduce((sum, cat) => sum + cat.slots.length, 0);
-	if (totalSlots !== 30) {
-		throw error(400, 'Board must be complete before creating a game');
-	}
+	if (totalSlots !== 30) throw error(400, "Board must be complete before creating a game");
 
 	// Generate unique game code
 	let code = generateGameCode();
-	let existingGame = await prisma.game.findUnique({ where: { code } });
-	while (existingGame) {
+	while (await db.query.games.findFirst({ where: (g, { eq }) => eq(g.code, code) })) {
 		code = generateGameCode();
-		existingGame = await prisma.game.findUnique({ where: { code } });
 	}
 
-	// Default team colors
-	const defaultColors = ['#EF4444', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
+	const defaultColors = ["#EF4444", "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899"];
+	const now = new Date().toISOString();
+	const gameId = createId();
 
-	// Create game with teams
-	const game = await prisma.game.create({
-		data: {
+	const teamInserts = Array.from({ length: teamCount }, (_, i) =>
+		db.insert(teams).values({
+			id: createId(),
+			name: teamNames?.[i] || `Team ${i + 1}`,
+			color: teamColors?.[i] || defaultColors[i],
+			score: 0,
+			gameId,
+			createdAt: now,
+			updatedAt: now
+		})
+	);
+
+	await db.batch([
+		db.insert(games).values({
+			id: gameId,
 			code,
 			boardId,
-			instructorId: locals.instructor.id,
-			status: 'LOBBY',
-			teamAssignment: teamAssignment as 'MANUAL' | 'RANDOM',
-			teams: {
-				create: Array.from({ length: teamCount }, (_, i) => ({
-					name: teamNames?.[i] || `Team ${i + 1}`,
-					color: teamColors?.[i] || defaultColors[i],
-					score: 0
-				}))
-			},
-			gameState: {
-				create: {
-					buzzerEnabled: false
-				}
-			}
-		},
-		include: {
-			board: {
-				include: {
-					categories: {
-						include: {
-							slots: {
-								include: {
-									question: true
-								}
-							}
-						}
-					}
-				}
-			},
+			instructorId: locals.instructor!.id,
+			status: "LOBBY",
+			teamAssignment,
+			createdAt: now,
+			updatedAt: now
+		}),
+		...teamInserts,
+		db.insert(gameState).values({
+			id: createId(),
+			gameId,
+			answeredSlots: "[]",
+			buzzerEnabled: false,
+			createdAt: now,
+			updatedAt: now
+		})
+	]);
+
+	const game = await db.query.games.findFirst({
+		where: (g, { eq }) => eq(g.id, gameId),
+		with: {
+			board: { with: { categories: { with: { slots: { with: { question: true } } } } } },
 			teams: true,
 			students: true,
 			gameState: true

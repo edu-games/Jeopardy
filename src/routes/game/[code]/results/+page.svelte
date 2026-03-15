@@ -23,15 +23,15 @@
     });
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 p-4">
+<div class="min-h-screen bg-[#0f172a] p-4">
     <div class="max-w-4xl mx-auto">
         <!-- Header -->
-        <div class="mb-6 bg-white/10 backdrop-blur-sm rounded-lg p-6">
+        <div class="mb-6 bg-white/5 border border-white/10 rounded-2xl p-6">
             <div class="text-center">
                 <h1 class="text-3xl font-bold text-white mb-2">
                     Game Complete!
                 </h1>
-                <p class="text-blue-200 text-lg">
+                <p class="text-white/50 text-lg">
                     {data.game.board.name}
                 </p>
             </div>
@@ -40,7 +40,7 @@
         <!-- Winner Announcement -->
         {#if winningTeam}
             <div
-                class="bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-lg p-8 mb-6 shadow-xl text-center"
+                class="bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl p-8 mb-6 shadow-xl text-center"
             >
                 <div class="mb-4">
                     <svg
@@ -65,7 +65,7 @@
         <!-- Your Team's Performance -->
         {#if myTeam}
             <div
-                class="mb-6 p-6 rounded-lg shadow-xl"
+                class="mb-6 p-6 rounded-2xl shadow-xl"
                 style={`background-color: ${myTeam.color}20; border: 3px solid ${myTeam.color}`}
             >
                 <div class="text-center">
@@ -93,7 +93,7 @@
                     <div class="text-5xl font-bold text-white mb-2">
                         ${myTeam.score}
                     </div>
-                    <p class="text-blue-200 text-lg">
+                    <p class="text-white/50 text-lg">
                         {#if myTeamRank() === 1}
                             🎉 Congratulations! You won! 🎉
                         {:else}
@@ -109,7 +109,7 @@
         {/if}
 
         <!-- Final Rankings -->
-        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-6">
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6">
             <h3 class="text-xl font-bold text-white mb-4 text-center">
                 Final Rankings
             </h3>
@@ -117,10 +117,10 @@
                 {#each data.game.teams as team, index}
                     {@const students = studentsPerTeam(team.id)}
                     <div
-                        class="p-4 rounded-lg {team.id === myTeam?.id
-                            ? 'ring-4 ring-white'
+                        class="p-4 rounded-xl {team.id === myTeam?.id
+                            ? 'ring-2 ring-white/30'
                             : ''}"
-                        style={`background-color: ${team.color}30; border: 2px solid ${team.color}`}
+                        style={`background-color: ${team.color}15; border: 2px solid ${team.color}50`}
                     >
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
@@ -144,7 +144,7 @@
                                     <p class="font-bold text-white text-lg">
                                         {team.name}
                                     </p>
-                                    <p class="text-sm text-blue-200">
+                                    <p class="text-sm text-white/50">
                                         {students?.length || 0} student{students?.length ===
                                         1
                                             ? ""
@@ -164,7 +164,7 @@
         </div>
 
         <!-- Game Stats -->
-        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-6">
             <h3 class="text-xl font-bold text-white mb-4 text-center">
                 Game Statistics
             </h3>
@@ -173,20 +173,20 @@
                     <p class="text-3xl font-bold text-white">
                         {totalQuestions}
                     </p>
-                    <p class="text-blue-200">Questions Answered</p>
+                    <p class="text-white/50">Questions Answered</p>
                 </div>
                 <div>
                     <p class="text-3xl font-bold text-white">
                         {data.game.teams.length}
                     </p>
-                    <p class="text-blue-200">Teams Competed</p>
+                    <p class="text-white/50">Teams Competed</p>
                 </div>
             </div>
         </div>
 
         <!-- Thank You Message -->
         <div class="mt-6 text-center">
-            <p class="text-blue-200 text-lg">Thanks for playing!</p>
+            <p class="text-white/50 text-lg">Thanks for playing!</p>
         </div>
     </div>
 </div>

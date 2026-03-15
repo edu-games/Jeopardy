@@ -1,33 +1,20 @@
-import type { PageServerLoad } from './$types';
-import prisma from '$lib/server/prisma';
+import { getDb } from "$lib/server/db";
+import * as schema from "$lib/server/schema";
+import { eq, desc, asc } from "drizzle-orm";
+import type { PageServerLoad } from "./";
 
-export const load: PageServerLoad = async ({ locals }) => {
-	// Get all questions for this instructor
-	const questions = await prisma.question.findMany({
-		where: {
-			instructorId: locals.instructor!.id
-		},
-		include: {
-			tags: {
-				include: {
-					tag: true
-				}
-			}
-		},
-		orderBy: {
-			createdAt: 'desc'
-		}
-	});
+export const load: PageServerLoad = async ({ locals, platform }) => {
+	const db = getDb(platform!.env.DB);
+	const [questions, tags] = await Promise.all([
+		db.query.questions.findMany({
+			where: eq(schema.questions.instructorId, locals.instructor!.id),
+			with: { tags: { with: { tag: true } } },
+			orderBy: [desc(schema.questions.createdAt)],
+		}),
+		db.query.tags.findMany({
+			orderBy: [asc(schema.tags.name)],
+		}),
+	]);
 
-	// Get all tags
-	const tags = await prisma.tag.findMany({
-		orderBy: {
-			name: 'asc'
-		}
-	});
-
-	return {
-		questions,
-		tags
-	};
+	return { questions, tags };
 };

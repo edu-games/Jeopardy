@@ -1,126 +1,113 @@
 import { json, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import prisma from "$lib/server/prisma";
+import { getDb } from "$lib/server/db";
+import { boards, categories, boardQuestionSlots } from "$lib/server/schema";
+import { eq } from "drizzle-orm";
+import { createId } from "@paralleldrive/cuid2";
 
-// GET /api/boards - List all boards
-export const GET: RequestHandler = async ({ locals }) => {
-  if (!locals.instructor) {
-    throw error(401, "Unauthorized");
-  }
+export const GET: RequestHandler = async ({ locals, platform }) => {
+	if (!locals.instructor) throw error(401, "Unauthorized");
 
-  const boards = await prisma.board.findMany({
-    where: {
-      instructorId: locals.instructor.id,
-    },
-    include: {
-      categories: {
-        include: {
-          slots: {
-            include: {
-              question: true,
-            },
-          },
-        },
-        orderBy: {
-          order: "asc",
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+	const db = getDb(platform!.env.DB);
 
-  return json({ boards });
+	const result = await db.query.boards.findMany({
+		where: (b, { eq }) => eq(b.instructorId, locals.instructor!.id),
+		with: {
+			categories: {
+				with: { slots: { with: { question: true } } },
+				orderBy: (c, { asc }) => [asc(c.order)]
+			}
+		},
+		orderBy: (b, { desc }) => [desc(b.createdAt)]
+	});
+
+	return json({ boards: result });
 };
 
-// POST /api/boards - Create a new board
-export const POST: RequestHandler = async ({ locals, request }) => {
-  if (!locals.instructor) {
-    throw error(401, "Unauthorized");
-  }
+export const POST: RequestHandler = async ({ locals, request, platform }) => {
+	if (!locals.instructor) throw error(401, "Unauthorized");
 
-  const data = await request.json();
-  const { name, description, categories } = data;
+	const data = await request.json();
+	const { name, description, categories: cats } = data;
 
-  // Validation
-  if (!name || typeof name !== "string" || name.trim().length === 0) {
-    throw error(400, "Board name is required");
-  }
+	if (!name || typeof name !== "string" || name.trim().length === 0) {
+		throw error(400, "Board name is required");
+	}
+	if (!cats || !Array.isArray(cats) || cats.length !== 6) {
+		throw error(400, "Board must have exactly 6 categories");
+	}
 
-  if (!categories || !Array.isArray(categories) || categories.length !== 6) {
-    throw error(400, "Board must have exactly 6 categories");
-  }
+	for (let i = 0; i < cats.length; i++) {
+		const cat = cats[i];
+		if (!cat.name || typeof cat.name !== "string") throw error(400, `Category ${i + 1} must have a name`);
+		if (!cat.slots || !Array.isArray(cat.slots) || cat.slots.length !== 5) {
+			throw error(400, `Category ${i + 1} must have exactly 5 question slots`);
+		}
+		for (let j = 0; j < cat.slots.length; j++) {
+			const slot = cat.slots[j];
+			if (!slot.questionId || typeof slot.questionId !== "string") {
+				throw error(400, `Category ${i + 1}, slot ${j + 1} must have a question ID`);
+			}
+			if (typeof slot.points !== "number" || slot.points <= 0) {
+				throw error(400, `Category ${i + 1}, slot ${j + 1} must have valid points`);
+			}
+		}
+	}
 
-  // Validate categories
-  for (let i = 0; i < categories.length; i++) {
-    const category = categories[i];
-    if (!category.name || typeof category.name !== "string") {
-      throw error(400, `Category ${i + 1} must have a name`);
-    }
-    if (
-      !category.slots ||
-      !Array.isArray(category.slots) ||
-      category.slots.length !== 5
-    ) {
-      throw error(400, `Category ${i + 1} must have exactly 5 question slots`);
-    }
+	const db = getDb(platform!.env.DB);
+	const now = new Date().toISOString();
+	const boardId = createId();
+	const catIds = cats.map(() => createId());
 
-    // Validate slots
-    for (let j = 0; j < category.slots.length; j++) {
-      const slot = category.slots[j];
-      if (!slot.questionId || typeof slot.questionId !== "string") {
-        throw error(
-          400,
-          `Category ${i + 1}, slot ${j + 1} must have a question ID`,
-        );
-      }
-      if (typeof slot.points !== "number" || slot.points <= 0) {
-        throw error(
-          400,
-          `Category ${i + 1}, slot ${j + 1} must have valid points`,
-        );
-      }
-    }
-  }
+	const catInserts = cats.map((cat, i) =>
+		db.insert(categories).values({
+			id: catIds[i],
+			name: cat.name.trim(),
+			order: i,
+			boardId,
+			createdAt: now,
+			updatedAt: now
+		})
+	);
 
-  // Create board with categories and slots
-  const board = await prisma.board.create({
-    data: {
-      name: name.trim(),
-      description: description?.trim() || null,
-      instructorId: locals.instructor.id,
-      categories: {
-        create: categories.map((category: any, index: number) => ({
-          name: category.name.trim(),
-          order: index,
-          slots: {
-            create: category.slots.map((slot: any, slotIndex: number) => ({
-              questionId: slot.questionId,
-              row: slotIndex,
-              column: index,
-              points: slot.points,
-              isDailyDouble: slot.isDailyDouble || false,
-            })),
-          },
-        })),
-      },
-    },
-    include: {
-      categories: {
-        include: {
-          slots: {
-            include: {
-              question: true,
-            },
-          },
-        },
-        orderBy: {
-          order: "asc",
-        },
-      },
-    },
-  });
+	const slotInserts = cats.flatMap((cat, i) =>
+		cat.slots.map((slot: { questionId: string; points: number; isDailyDouble?: boolean }, j: number) =>
+			db.insert(boardQuestionSlots).values({
+				id: createId(),
+				categoryId: catIds[i],
+				questionId: slot.questionId,
+				row: j,
+				column: i,
+				points: slot.points,
+				isDailyDouble: slot.isDailyDouble || false,
+				createdAt: now,
+				updatedAt: now
+			})
+		)
+	);
 
-  return json(board, { status: 201 });
+	await db.batch([
+		db.insert(boards).values({
+			id: boardId,
+			name: name.trim(),
+			description: description?.trim() || null,
+			instructorId: locals.instructor!.id,
+			createdAt: now,
+			updatedAt: now
+		}),
+		...catInserts,
+		...slotInserts
+	]);
+
+	const board = await db.query.boards.findFirst({
+		where: (b, { eq }) => eq(b.id, boardId),
+		with: {
+			categories: {
+				with: { slots: { with: { question: true } } },
+				orderBy: (c, { asc }) => [asc(c.order)]
+			}
+		}
+	});
+
+	return json(board, { status: 201 });
 };

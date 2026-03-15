@@ -1,37 +1,27 @@
-import type { PageServerLoad } from "./$types";
-import prisma from "$lib/server/prisma";
+import { getDb } from '$lib/server/db';
+import * as schema from '$lib/server/schema';
+import { eq, desc, asc } from 'drizzle-orm';
+import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
-  // Get all boards for this instructor
-  const boards = await prisma.board.findMany({
-    where: {
-      instructorId: locals.instructor!.id,
-    },
-    include: {
-      categories: {
-        include: {
-          slots: {
-            orderBy: {
-              row: "asc",
-            },
-          },
-        },
-        orderBy: {
-          order: "asc",
-        },
-      },
-      _count: {
-        select: {
-          games: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+export const load: PageServerLoad = async ({ locals, platform }) => {
+	const db = getDb(platform!.env.DB);
+	const boards = await db.query.boards.findMany({
+		where: eq(schema.boards.instructorId, locals.instructor!.id),
+		with: {
+			categories: {
+				with: {
+					slots: {
+						orderBy: [asc(schema.boardQuestionSlots.row)],
+					},
+				},
+				orderBy: [asc(schema.categories.order)],
+			},
+			games: true,
+		},
+		orderBy: [desc(schema.boards.createdAt)],
+	});
 
-  return {
-    boards,
-  };
+	return {
+		boards: boards.map((b) => ({ ...b, _count: { games: b.games.length } })),
+	};
 };

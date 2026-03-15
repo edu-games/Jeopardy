@@ -1,53 +1,33 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import prisma from '$lib/server/prisma';
+import { json, error } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import { getDb } from "$lib/server/db";
+import { like, or, and } from "drizzle-orm";
 
-// GET /api/questions/search - Search questions by tags
-export const GET: RequestHandler = async ({ locals, url }) => {
-	if (!locals.instructor) {
-		throw error(401, 'Unauthorized');
-	}
+export const GET: RequestHandler = async ({ locals, url, platform }) => {
+	if (!locals.instructor) throw error(401, "Unauthorized");
 
-	const tagNames = url.searchParams.getAll('tag');
-	const searchTerm = url.searchParams.get('q') || '';
+	const tagNames = url.searchParams.getAll("tag");
+	const searchTerm = url.searchParams.get("q") || "";
 
-	// Build where clause
-	const where: any = {
-		instructorId: locals.instructor.id
-	};
+	const db = getDb(platform!.env.DB);
 
-	// Add text search
-	if (searchTerm) {
-		where.OR = [
-			{ answer: { contains: searchTerm, mode: 'insensitive' } },
-			{ question: { contains: searchTerm, mode: 'insensitive' } }
-		];
-	}
-
-	// Add tag filter by name
-	if (tagNames.length > 0) {
-		where.tags = {
-			some: {
-				tag: {
-					name: { in: tagNames }
-				}
+	const results = await db.query.questions.findMany({
+		where: (q, { eq, and, or, like }) => {
+			const conditions = [eq(q.instructorId, locals.instructor!.id)];
+			if (searchTerm) {
+				conditions.push(or(like(q.answer, `%${searchTerm}%`), like(q.question, `%${searchTerm}%`))!);
 			}
-		};
-	}
-
-	const questions = await prisma.question.findMany({
-		where,
-		include: {
-			tags: {
-				include: {
-					tag: true
-				}
-			}
+			return and(...conditions);
 		},
-		orderBy: {
-			createdAt: 'desc'
-		}
+		with: { tags: { with: { tag: true } } },
+		orderBy: (q, { desc }) => [desc(q.createdAt)]
 	});
 
-	return json({ questions });
+	// Filter by tag names (in memory)
+	const filtered =
+		tagNames.length > 0
+			? results.filter((q) => q.tags.some((t) => tagNames.includes(t.tag.name)))
+			: results;
+
+	return json({ questions: filtered });
 };

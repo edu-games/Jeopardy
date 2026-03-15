@@ -1,41 +1,28 @@
 import { error } from '@sveltejs/kit';
+import { getDb } from '$lib/server/db';
+import * as schema from '$lib/server/schema';
+import { and, eq, desc } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
-import prisma from '$lib/server/prisma';
 
-export const load: PageServerLoad = async ({ locals, params }) => {
-	const game = await prisma.game.findFirst({
-		where: {
-			id: params.id,
-			instructorId: locals.instructor!.id
-		},
-		include: {
+export const load: PageServerLoad = async ({ locals, params, platform }) => {
+	const db = getDb(platform!.env.DB);
+	const game = await db.query.games.findFirst({
+		where: and(eq(schema.games.id, params.id), eq(schema.games.instructorId, locals.instructor!.id)),
+		with: {
 			board: true,
 			teams: {
-				include: {
-					students: true
-				},
-				orderBy: {
-					score: 'desc' // Order by highest score first
-				}
+				with: { students: true },
+				orderBy: [desc(schema.teams.score)],
 			},
 			students: {
-				include: {
-					team: true
-				}
+				with: { team: true },
 			},
-			gameState: true
-		}
+			gameState: true,
+		},
 	});
 
-	if (!game) {
-		throw error(404, 'Game not found');
-	}
+	if (!game) throw error(404, 'Game not found');
+	if (game.status !== 'COMPLETED') throw error(400, 'Game is not yet completed');
 
-	if (game.status !== 'COMPLETED') {
-		throw error(400, 'Game is not yet completed');
-	}
-
-	return {
-		game
-	};
+	return { game };
 };

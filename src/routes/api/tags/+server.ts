@@ -1,34 +1,32 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import prisma from '$lib/server/prisma';
+import { getDb } from '$lib/server/db';
+import { tags, questionTags } from '$lib/server/schema';
+import { eq, asc, count } from 'drizzle-orm';
+import { createId } from '@paralleldrive/cuid2';
 
-// GET /api/tags - List all tags
-export const GET: RequestHandler = async ({ locals }) => {
-	if (!locals.instructor) {
-		throw error(401, 'Unauthorized');
-	}
+export const GET: RequestHandler = async ({ locals, platform }) => {
+	if (!locals.instructor) throw error(401, 'Unauthorized');
 
-	const tags = await prisma.tag.findMany({
-		orderBy: {
-			name: 'asc'
-		},
-		include: {
-			_count: {
-				select: {
-					questions: true
-				}
-			}
-		}
-	});
+	const db = getDb(platform!.env.DB);
 
-	return json({ tags });
+	const allTags = await db
+		.select({
+			id: tags.id,
+			name: tags.name,
+			createdAt: tags.createdAt,
+			questionCount: count(questionTags.tagId)
+		})
+		.from(tags)
+		.leftJoin(questionTags, eq(tags.id, questionTags.tagId))
+		.groupBy(tags.id)
+		.orderBy(asc(tags.name));
+
+	return json({ tags: allTags });
 };
 
-// POST /api/tags - Create a new tag
-export const POST: RequestHandler = async ({ locals, request }) => {
-	if (!locals.instructor) {
-		throw error(401, 'Unauthorized');
-	}
+export const POST: RequestHandler = async ({ locals, request, platform }) => {
+	if (!locals.instructor) throw error(401, 'Unauthorized');
 
 	const data = await request.json();
 	const { name } = data;
@@ -37,20 +35,15 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		throw error(400, 'Tag name is required');
 	}
 
-	// Check if tag already exists
-	const existing = await prisma.tag.findUnique({
-		where: { name: name.trim() }
-	});
+	const db = getDb(platform!.env.DB);
+	const trimmed = name.trim();
 
-	if (existing) {
-		return json(existing);
-	}
+	const existing = await db.select().from(tags).where(eq(tags.name, trimmed)).get();
+	if (existing) return json(existing);
 
-	const tag = await prisma.tag.create({
-		data: {
-			name: name.trim()
-		}
-	});
+	const id = createId();
+	const now = new Date().toISOString();
+	await db.insert(tags).values({ id, name: trimmed, createdAt: now });
 
-	return json(tag, { status: 201 });
+	return json({ id, name: trimmed, createdAt: now }, { status: 201 });
 };

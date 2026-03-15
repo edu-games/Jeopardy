@@ -4,122 +4,100 @@
     let { form }: { form: ActionData } = $props();
 </script>
 
-<div
-    class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 to-blue-700 px-4"
->
-    <div class="max-w-md w-full bg-white rounded-lg shadow-xl p-8">
-        <h1 class="text-3xl font-bold text-center mb-2 text-blue-900">
-            Classroom Jeopardy
-        </h1>
-        <p class="text-center text-gray-600 mb-8">Instructor Registration</p>
+<div class="min-h-screen flex flex-col items-center justify-center px-6"
+     style="background: #0d0d10">
+
+    <!-- Logo -->
+    <div class="text-center mb-12">
+        <a href="/" class="text-white font-black text-4xl tracking-wider hover:text-white/80 transition-colors">
+            JEOPARDY<span class="text-amber-500">!</span>
+        </a>
+        <p class="text-white/30 text-sm mt-2 tracking-widest uppercase">Create your account</p>
+    </div>
+
+    <!-- Form -->
+    <div class="w-full max-w-sm">
 
         {#if form?.error}
-            <div
-                class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
-            >
-                {form.error}
+            <div class="mb-6 flex items-start gap-3 bg-red-500/10 border border-red-500/20 rounded-2xl px-4 py-3">
+                <svg class="w-4 h-4 text-red-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                <p class="text-red-400 text-sm">{form.error}</p>
             </div>
         {/if}
 
-        <form method="POST" class="space-y-6">
+        <form method="POST" class="space-y-5">
             <div>
-                <label
-                    for="name"
-                    class="block text-sm font-medium text-gray-700 mb-2"
-                >
-                    Full Name
-                </label>
+                <label for="name" class="block text-white/40 text-xs uppercase tracking-widest mb-2">Full Name</label>
                 <input
                     type="text"
                     id="name"
                     name="name"
                     value={form?.name ?? ""}
                     required
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="John Doe"
+                    class="w-full bg-white/5 border border-white/10 text-white placeholder:text-white/20 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-400/50 focus:bg-white/8 transition-all"
                 />
             </div>
 
             <div>
-                <label
-                    for="email"
-                    class="block text-sm font-medium text-gray-700 mb-2"
-                >
-                    Email
-                </label>
+                <label for="email" class="block text-white/40 text-xs uppercase tracking-widest mb-2">Email</label>
                 <input
                     type="email"
                     id="email"
                     name="email"
                     value={form?.email ?? ""}
                     required
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="your@email.com"
+                    class="w-full bg-white/5 border border-white/10 text-white placeholder:text-white/20 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-400/50 focus:bg-white/8 transition-all"
                 />
             </div>
 
             <div>
-                <label
-                    for="password"
-                    class="block text-sm font-medium text-gray-700 mb-2"
-                >
-                    Password
-                </label>
+                <label for="password" class="block text-white/40 text-xs uppercase tracking-widest mb-2">Password</label>
                 <input
                     type="password"
                     id="password"
                     name="password"
                     required
                     minlength="8"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="••••••••"
+                    class="w-full bg-white/5 border border-white/10 text-white placeholder:text-white/20 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-400/50 focus:bg-white/8 transition-all"
                 />
-                <p class="text-sm text-gray-500 mt-1">
-                    Must be at least 8 characters
-                </p>
+                <p class="text-white/25 text-xs mt-1.5 pl-1">Minimum 8 characters</p>
             </div>
 
             <div>
-                <label
-                    for="confirmPassword"
-                    class="block text-sm font-medium text-gray-700 mb-2"
-                >
-                    Confirm Password
-                </label>
+                <label for="confirmPassword" class="block text-white/40 text-xs uppercase tracking-widest mb-2">Confirm Password</label>
                 <input
                     type="password"
                     id="confirmPassword"
                     name="confirmPassword"
                     required
                     minlength="8"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="••••••••"
+                    class="w-full bg-white/5 border border-white/10 text-white placeholder:text-white/20 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-400/50 focus:bg-white/8 transition-all"
                 />
             </div>
 
             <button
                 type="submit"
-                class="w-full bg-blue-700 text-white py-3 rounded-lg font-semibold hover:bg-blue-800 transition-colors"
+                class="w-full py-4 rounded-xl font-bold text-base mt-2 hover:bg-white/90 transition-all active:scale-95"
+                style="background: white; color: #0d0d10"
             >
-                Register
+                Create Account
             </button>
         </form>
 
-        <p class="text-center mt-6 text-gray-600">
-            Already have an account?
-            <a
-                href="/login"
-                class="text-blue-700 hover:text-blue-800 font-semibold"
-            >
-                Login here
-            </a>
-        </p>
-
-        <div class="mt-6 pt-6 border-t border-gray-200">
-            <a
-                href="/"
-                class="text-sm text-gray-600 hover:text-gray-800 flex items-center justify-center"
-            >
+        <div class="mt-8 pt-6 border-t border-white/8 text-center space-y-3">
+            <p class="text-white/40 text-sm">
+                Already have an account?
+                <a href="/login" class="text-amber-400 hover:text-amber-300 font-semibold transition-colors">
+                    Sign in
+                </a>
+            </p>
+            <a href="/" class="text-white/25 hover:text-white/50 text-sm transition-colors">
                 ← Back to home
             </a>
         </div>
