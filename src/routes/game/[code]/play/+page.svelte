@@ -75,6 +75,15 @@
                         buzzerPressed = false;
                         pressingBuzzer = false;
                         break;
+                    case "question-closed":
+                        currentSlotData = null;
+                        if (gameState) {
+                            gameState.currentSlotId = null;
+                            gameState.buzzerEnabled = false;
+                        }
+                        buzzerPressed = false;
+                        pressingBuzzer = false;
+                        break;
                     case "buzzer-pressed":
                         if (msg.studentId === data.student.id) buzzerPressed = true;
                         pressingBuzzer = false;

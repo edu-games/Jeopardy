@@ -58,10 +58,20 @@
                         currentSlotData = msg.currentSlot;
                         break;
 
+                    case "question-closed":
+                        currentSlotData = null;
+                        break;
+
                     case "answer-submitted":
                         answeredSlots = msg.answeredSlots;
                         currentSlotData = null;
                         if (msg.teams) teams = msg.teams;
+                        break;
+
+                    case "game-state-snapshot":
+                        if (msg.teams) teams = msg.teams;
+                        if (msg.answeredSlots) answeredSlots = msg.answeredSlots;
+                        currentSlotData = msg.currentSlot ?? null;
                         break;
 
                     case "game-started":

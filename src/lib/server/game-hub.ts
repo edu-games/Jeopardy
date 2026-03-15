@@ -2,8 +2,6 @@ import { getDb, type DB } from "./db";
 import { eq, sql } from "drizzle-orm";
 import { games, teams, students, gameState, boardQuestionSlots } from "./schema";
 
-const encode = (s: string) => new TextEncoder().encode(s);
-
 export class GameHub implements DurableObject {
 	private readonly state: DurableObjectState;
 	private readonly env: { DB: D1Database };
@@ -36,6 +34,38 @@ export class GameHub implements DurableObject {
 
 			if (role === "student" && studentId) {
 				this.broadcast({ type: "student-status", studentId, connected: true });
+			}
+
+			if (role === "instructor" || role === "projector") {
+				// Snapshot of which students are currently connected
+				const connectedStudentIds = this.state.getWebSockets()
+					.filter(ws => this.state.getTags(ws)[0] === "student")
+					.map(ws => this.state.getTags(ws)[3])
+					.filter((id): id is string => id !== "");
+				server.send(JSON.stringify({ type: "connected-students-snapshot", studentIds: connectedStudentIds }));
+
+				// Snapshot of current game state so reconnecting clients are immediately in sync
+				const db = getDb(this.env.DB);
+				const game = await db.query.games.findFirst({
+					where: (g, { eq }) => eq(g.id, gameId),
+					with: { gameState: true, teams: { with: { students: true } } }
+				});
+				if (game?.gameState) {
+					let currentSlot = null;
+					if (game.gameState.currentSlotId) {
+						currentSlot = await db.query.boardQuestionSlots.findFirst({
+							where: (s, { eq }) => eq(s.id, game.gameState!.currentSlotId!),
+							with: { question: true, category: { with: { board: true } } }
+						});
+					}
+					server.send(JSON.stringify({
+						type: "game-state-snapshot",
+						currentSlot,
+						answeredSlots: JSON.parse(game.gameState.answeredSlots ?? "[]"),
+						teams: game.teams,
+						buzzerEnabled: game.gameState.buzzerEnabled ?? false
+					}));
+				}
 			}
 
 			return new Response(null, { status: 101, webSocket: client });
@@ -75,6 +105,9 @@ export class GameHub implements DurableObject {
 					break;
 				case "reveal-question":
 					await this.handleRevealQuestion(db, ws, gameId, instructorId, event.slotId as string);
+					break;
+				case "close-question":
+					await this.handleCloseQuestion(db, ws, gameId, instructorId);
 					break;
 				case "answer":
 					await this.handleAnswer(db, ws, gameId, instructorId, event.isCorrect as boolean, event.teamId as string);
@@ -154,13 +187,11 @@ export class GameHub implements DurableObject {
 			return ws.send(JSON.stringify({ type: "error", message: "Game is not in progress" }));
 		}
 
-		// Check if already answered
 		const answered = JSON.parse(game.gameState?.answeredSlots ?? "[]") as string[];
 		if (answered.includes(slotId)) {
 			return ws.send(JSON.stringify({ type: "error", message: "Question already answered" }));
 		}
 
-		// Get slot data
 		const slot = await db.query.boardQuestionSlots.findFirst({
 			where: (s, { eq }) => eq(s.id, slotId),
 			with: { question: true, category: { with: { board: true } } }
@@ -180,6 +211,24 @@ export class GameHub implements DurableObject {
 		}).where(eq(gameState.gameId, gameId));
 
 		this.broadcast({ type: "question-revealed", slotId, currentSlot: slot, buzzerEnabled });
+	}
+
+	private async handleCloseQuestion(db: DB, ws: WebSocket, gameId: string, instructorId: string) {
+		const game = await db.query.games.findFirst({ where: (g, { eq }) => eq(g.id, gameId) });
+		if (!game || game.instructorId !== instructorId) {
+			return ws.send(JSON.stringify({ type: "error", message: "Unauthorized" }));
+		}
+
+		const now = new Date().toISOString();
+		await db.update(gameState).set({
+			currentSlotId: null,
+			currentTeamId: null,
+			questionStartedAt: null,
+			buzzerEnabled: false,
+			updatedAt: now
+		}).where(eq(gameState.gameId, gameId));
+
+		this.broadcast({ type: "question-closed" });
 	}
 
 	private async handleAnswer(db: DB, ws: WebSocket, gameId: string, instructorId: string, isCorrect: boolean, teamId: string) {
@@ -202,12 +251,10 @@ export class GameHub implements DurableObject {
 		const scoreChange = isCorrect ? slot.points : -slot.points;
 		const now = new Date().toISOString();
 
-		// Update score
 		await db.update(teams)
 			.set({ score: sql`${teams.score} + ${scoreChange}`, updatedAt: now })
 			.where(eq(teams.id, teamId));
 
-		// Read-modify-write answeredSlots
 		const answered = JSON.parse(game.gameState?.answeredSlots ?? "[]") as string[];
 		answered.push(currentSlotId);
 
@@ -251,7 +298,6 @@ export class GameHub implements DurableObject {
 		const buzzerAt = new Date().toISOString();
 		await db.update(students).set({ buzzerAt, updatedAt: buzzerAt }).where(eq(students.id, studentId));
 
-		// Disable buzzer
 		await db.update(gameState).set({ buzzerEnabled: false, updatedAt: buzzerAt }).where(eq(gameState.gameId, gameId));
 
 		this.broadcast({
