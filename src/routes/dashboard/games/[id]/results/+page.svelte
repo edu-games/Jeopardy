@@ -22,7 +22,7 @@
                 <div class="flex items-center gap-2 mb-2">
                     <a
                         href="/dashboard/games"
-                        class="text-gray-600 hover:text-gray-900 transition-colors"
+                        class="text-white/50 hover:text-white transition-colors"
                     >
                         <svg
                             class="w-5 h-5"
@@ -38,15 +38,15 @@
                             />
                         </svg>
                     </a>
-                    <h1 class="text-3xl font-bold text-gray-900">
+                    <h1 class="text-3xl font-bold text-white">
                         Game Results
                     </h1>
                 </div>
-                <p class="text-gray-600">{data.game.board.name}</p>
+                <p class="text-white/50">{data.game.board.name}</p>
             </div>
             <a
                 href="/dashboard/games"
-                class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                class="px-6 py-3 bg-white/10 text-white/70 border border-white/10 rounded-xl hover:bg-white/15 transition-colors font-medium"
             >
                 Back to Games
             </a>
@@ -56,7 +56,7 @@
     <!-- Winner Celebration -->
     {#if winningTeam}
         <div
-            class="bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-lg p-8 mb-8 shadow-xl text-center"
+            class="bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl p-8 mb-8 shadow-xl text-center"
         >
             <div class="mb-4">
                 <svg
@@ -83,11 +83,11 @@
 
     <!-- Game Statistics -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-6">
             <div class="flex items-center gap-3">
-                <div class="bg-blue-100 rounded-full p-3">
+                <div class="bg-blue-500/20 rounded-full p-3">
                     <svg
-                        class="w-6 h-6 text-blue-600"
+                        class="w-6 h-6 text-blue-400"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -101,19 +101,19 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-gray-600 text-sm">Questions Answered</p>
-                    <p class="text-2xl font-bold text-gray-900">
+                    <p class="text-white/50 text-sm">Questions Answered</p>
+                    <p class="text-2xl font-bold text-white">
                         {totalQuestions}
                     </p>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-6">
             <div class="flex items-center gap-3">
-                <div class="bg-green-100 rounded-full p-3">
+                <div class="bg-green-500/20 rounded-full p-3">
                     <svg
-                        class="w-6 h-6 text-green-600"
+                        class="w-6 h-6 text-green-400"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -127,19 +127,19 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-gray-600 text-sm">Total Students</p>
-                    <p class="text-2xl font-bold text-gray-900">
+                    <p class="text-white/50 text-sm">Total Students</p>
+                    <p class="text-2xl font-bold text-white">
                         {totalStudents}
                     </p>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-6">
             <div class="flex items-center gap-3">
-                <div class="bg-purple-100 rounded-full p-3">
+                <div class="bg-purple-500/20 rounded-full p-3">
                     <svg
-                        class="w-6 h-6 text-purple-600"
+                        class="w-6 h-6 text-purple-400"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -153,8 +153,8 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-gray-600 text-sm">Teams</p>
-                    <p class="text-2xl font-bold text-gray-900">
+                    <p class="text-white/50 text-sm">Teams</p>
+                    <p class="text-2xl font-bold text-white">
                         {data.game.teams.length}
                     </p>
                 </div>
@@ -163,17 +163,17 @@
     </div>
 
     <!-- Team Rankings -->
-    <div class="bg-white rounded-lg shadow mb-8">
-        <div class="p-6 border-b">
-            <h2 class="text-xl font-bold text-gray-900">Team Rankings</h2>
+    <div class="bg-white/5 border border-white/10 rounded-2xl mb-8">
+        <div class="p-6 border-b border-white/10">
+            <h2 class="text-xl font-bold text-white">Team Rankings</h2>
         </div>
         <div class="p-6">
             <div class="space-y-4">
                 {#each data.game.teams as team, index}
                     {@const students = studentsPerTeam(team.id)}
                     <div
-                        class="p-6 rounded-lg border-2 transition-all"
-                        style={`border-color: ${team.color}; background-color: ${team.color}10`}
+                        class="p-6 rounded-xl border-2 transition-all"
+                        style={`border-color: ${team.color}40; background-color: ${team.color}15`}
                     >
                         <div class="flex items-center justify-between mb-4">
                             <div class="flex items-center gap-4">
@@ -195,10 +195,10 @@
 
                                 <!-- Team Info -->
                                 <div>
-                                    <h3 class="text-2xl font-bold text-gray-900">
+                                    <h3 class="text-2xl font-bold text-white">
                                         {team.name}
                                     </h3>
-                                    <p class="text-gray-600">
+                                    <p class="text-white/50">
                                         {students.length} student{students.length ===
                                         1
                                             ? ""
@@ -209,24 +209,23 @@
 
                             <!-- Score -->
                             <div class="text-right">
-                                <p class="text-4xl font-bold text-gray-900">
+                                <p class="text-4xl font-bold text-white">
                                     ${team.score}
                                 </p>
-                                <p class="text-gray-600 text-sm">Final Score</p>
+                                <p class="text-white/50 text-sm">Final Score</p>
                             </div>
                         </div>
 
                         <!-- Student List -->
                         {#if students.length > 0}
-                            <div class="mt-4 pt-4 border-t border-gray-200">
-                                <p class="text-sm font-medium text-gray-700 mb-2">
+                            <div class="mt-4 pt-4 border-t border-white/10">
+                                <p class="text-sm font-medium text-white/50 mb-2">
                                     Team Members:
                                 </p>
                                 <div class="flex flex-wrap gap-2">
                                     {#each students as student}
                                         <span
-                                            class="px-3 py-1 rounded-full text-sm font-medium text-gray-700"
-                                            style={`background-color: ${team.color}30`}
+                                            class="px-3 py-1 rounded-full text-sm font-medium bg-white/10 text-white/70"
                                         >
                                             {student.name}
                                         </span>
@@ -244,13 +243,13 @@
     <div class="flex gap-4">
         <a
             href="/dashboard/games"
-            class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium text-center"
+            class="px-6 py-3 bg-white/10 text-white/70 border border-white/10 rounded-xl hover:bg-white/15 transition-colors font-medium text-center"
         >
             Back to Games
         </a>
         <a
             href="/dashboard/games/{data.game.id}/play"
-            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            class="px-6 py-3 bg-yellow-400 text-blue-950 rounded-xl hover:bg-yellow-300 transition-colors font-bold"
         >
             View Game Board
         </a>
