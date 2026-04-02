@@ -18,6 +18,8 @@
     );
     let teams = $state<any[]>([]);
     let ws: WebSocket | null = null;
+    let clueReady = $state(false);
+    let currentWager = $state<number | null>(null);
 
     // Get current question slot if one is active
     const currentSlot = $derived(
@@ -56,15 +58,26 @@
                 switch (msg.type) {
                     case "question-revealed":
                         currentSlotData = msg.currentSlot;
+                        clueReady = !msg.currentSlot?.isDailyDouble;
+                        currentWager = null;
+                        break;
+
+                    case "wager-submitted":
+                        clueReady = true;
+                        currentWager = msg.wager;
                         break;
 
                     case "question-closed":
                         currentSlotData = null;
+                        clueReady = false;
+                        currentWager = null;
                         break;
 
                     case "answer-submitted":
                         answeredSlots = msg.answeredSlots;
                         currentSlotData = null;
+                        clueReady = false;
+                        currentWager = null;
                         if (msg.teams) teams = msg.teams;
                         break;
 
@@ -72,6 +85,10 @@
                         if (msg.teams) teams = msg.teams;
                         if (msg.answeredSlots) answeredSlots = msg.answeredSlots;
                         currentSlotData = msg.currentSlot ?? null;
+                        if (msg.currentSlot) {
+                            clueReady = !msg.currentSlot.isDailyDouble || !!msg.currentWager;
+                            currentWager = msg.currentWager ?? null;
+                        }
                         break;
 
                     case "game-started":
@@ -131,12 +148,25 @@
     <!-- Main area -->
     <div class="flex-1 flex flex-col px-6 py-4 gap-4 min-h-0">
         {#if currentSlot && currentCategory}
-            <QuestionDisplay
-                categoryName={currentCategory.name}
-                points={currentSlot.points}
-                isDailyDouble={currentSlot.isDailyDouble}
-                clue={currentSlot.question.answer}
-            />
+            {#if currentSlot.isDailyDouble && !clueReady}
+                <!-- Daily Double splash — waiting for wager -->
+                <div class="flex-1 flex flex-col items-center justify-center gap-6 px-4 py-6">
+                    <p class="text-white/50 text-sm md:text-base uppercase tracking-widest font-medium">{currentCategory.name}</p>
+                    <p class="text-8xl md:text-9xl font-black" style="color: #f59e0b">💰</p>
+                    <span class="inline-block px-8 py-3 rounded-full text-2xl md:text-4xl font-black tracking-wide" style="background: #f59e0b; color: #1e3a8a">
+                        DAILY DOUBLE
+                    </span>
+                    <p class="text-white/40 text-lg">Wager being placed...</p>
+                </div>
+            {:else}
+                <QuestionDisplay
+                    categoryName={currentCategory.name}
+                    points={currentSlot.points}
+                    isDailyDouble={currentSlot.isDailyDouble}
+                    clue={currentSlot.question.answer}
+                    wager={currentWager}
+                />
+            {/if}
         {:else}
             <JeopardyBoard
                 categories={data.game.board.categories}

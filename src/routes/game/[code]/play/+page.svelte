@@ -8,6 +8,8 @@
     let pressingBuzzer = $state(false);
     let buzzerError = $state("");
     let wsConnected = $state(false);
+    let clueReady = $state(false);
+    let dailyDoubleWager = $state<number | null>(null);
 
     let teams = $state(data.game.teams);
     let gameStatus = $state(data.game.status);
@@ -56,6 +58,8 @@
                 switch (msg.type) {
                     case "question-revealed":
                         currentSlotData = msg.currentSlot;
+                        clueReady = !msg.currentSlot?.isDailyDouble;
+                        dailyDoubleWager = null;
                         if (gameState) {
                             gameState.currentSlotId = msg.slotId;
                             gameState.buzzerEnabled = msg.buzzerEnabled;
@@ -63,6 +67,10 @@
                         buzzerPressed = false;
                         buzzerError = "";
                         pressingBuzzer = false;
+                        break;
+                    case "wager-submitted":
+                        clueReady = true;
+                        dailyDoubleWager = msg.wager;
                         break;
                     case "answer-submitted":
                         teams = msg.teams;
@@ -72,11 +80,15 @@
                             gameState.buzzerEnabled = false;
                         }
                         currentSlotData = null;
+                        clueReady = false;
+                        dailyDoubleWager = null;
                         buzzerPressed = false;
                         pressingBuzzer = false;
                         break;
                     case "question-closed":
                         currentSlotData = null;
+                        clueReady = false;
+                        dailyDoubleWager = null;
                         if (gameState) {
                             gameState.currentSlotId = null;
                             gameState.buzzerEnabled = false;
@@ -211,17 +223,31 @@
                         {#if currentSlot.isDailyDouble}
                             <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-amber-400 text-white">DD</span>
                         {/if}
-                        <p class="text-amber-500 font-black text-lg">${currentSlot.points}</p>
+                        {#if dailyDoubleWager !== null}
+                            <p class="text-amber-500 font-black text-lg">Wager: ${dailyDoubleWager.toLocaleString()}</p>
+                        {:else}
+                            <p class="text-amber-500 font-black text-lg">${currentSlot.points}</p>
+                        {/if}
                     </div>
                 </div>
 
-                <!-- Clue card — keep it bold and colorful as a focal point -->
-                <div class="flex-1 rounded-3xl flex items-center justify-center p-6 min-h-0 shadow-sm"
-                     style="background: linear-gradient(135deg, #1e3a8a, #1d4ed8)">
-                    <p class="text-white text-2xl font-bold text-center leading-snug tracking-wide">
-                        {currentSlot.question.answer}
-                    </p>
-                </div>
+                {#if currentSlot.isDailyDouble && !clueReady}
+                    <!-- Daily Double splash — wager not yet submitted -->
+                    <div class="flex-1 rounded-3xl flex flex-col items-center justify-center gap-4 p-6"
+                         style="background: linear-gradient(135deg, #78350f, #b45309)">
+                        <p class="text-amber-200 text-sm uppercase tracking-widest font-bold">Daily Double!</p>
+                        <p class="text-white text-4xl font-black">💰</p>
+                        <p class="text-amber-200 text-sm text-center">Wager is being placed...</p>
+                    </div>
+                {:else}
+                    <!-- Clue card -->
+                    <div class="flex-1 rounded-3xl flex items-center justify-center p-6 min-h-0 shadow-sm"
+                         style="background: linear-gradient(135deg, #1e3a8a, #1d4ed8)">
+                        <p class="text-white text-2xl font-bold text-center leading-snug tracking-wide">
+                            {currentSlot.question.answer}
+                        </p>
+                    </div>
+                {/if}
 
                 <!-- Buzzer area -->
                 <div class="shrink-0 flex flex-col items-center gap-3 pb-1">

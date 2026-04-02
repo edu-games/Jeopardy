@@ -268,6 +268,7 @@ export const gameState = sqliteTable('game_state', {
 	currentTeamId: text('current_team_id'),
 	questionStartedAt: text('question_started_at'), // ISO 8601 string or null
 	buzzerEnabled: integer('buzzer_enabled', { mode: 'boolean' }).notNull().default(false),
+	currentWager: integer('current_wager'),
 	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 	updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`)
 });

@@ -1,0 +1,1 @@
+ALTER TABLE `game_state` ADD `current_wager` integer;

@@ -19,6 +19,10 @@
     let endingGame = $state(false);
     let endGameError = $state("");
     let wsConnected = $state(false);
+    let wagerSubmitted = $state(false);
+    let currentWager = $state(0);
+    let wagerInput = $state("5");
+    let wagerError = $state("");
 
     let ws: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -54,7 +58,31 @@
         if (isSlotAnswered(slot.id)) return;
         currentSlot = slot;
         selectedTeamId = teams[0]?.id || "";
+        wagerSubmitted = false;
+        currentWager = 0;
+        wagerInput = "5";
+        wagerError = "";
         send({ type: "reveal-question", slotId: slot.id });
+    }
+
+    function submitWager() {
+        const wager = parseInt(wagerInput);
+        if (!selectedTeamId || !currentSlot) return;
+        const team = teams.find((t) => t.id === selectedTeamId);
+        const maxBoardPoints = Math.max(
+            ...data.game.board.categories.flatMap((c) => c.slots.map((s: any) => s.points))
+        );
+        const maxWager = Math.max(team?.score ?? 0, maxBoardPoints);
+        if (isNaN(wager) || wager < 5) {
+            wagerError = "Minimum wager is $5";
+            return;
+        }
+        if (wager > maxWager) {
+            wagerError = `Maximum wager is $${maxWager.toLocaleString()}`;
+            return;
+        }
+        wagerError = "";
+        send({ type: "submit-wager", teamId: selectedTeamId, wager });
     }
 
     function submitAnswer(isCorrect: boolean) {
@@ -68,6 +96,10 @@
         currentSlot = null;
         submittingAnswer = false;
         buzzerNotification = null;
+        wagerSubmitted = false;
+        currentWager = 0;
+        wagerInput = "5";
+        wagerError = "";
     }
 
     // Count answered questions
@@ -94,6 +126,12 @@
                         setTimeout(() => { buzzerNotification = null; }, 3000);
                         break;
 
+                    case "wager-submitted":
+                        wagerSubmitted = true;
+                        currentWager = msg.wager;
+                        selectedTeamId = msg.teamId;
+                        break;
+
                     case "answer-submitted":
                         teams = msg.teams;
                         answeredSlots = msg.answeredSlots;
@@ -101,12 +139,18 @@
                         selectedTeamId = "";
                         submittingAnswer = false;
                         buzzerNotification = null;
+                        wagerSubmitted = false;
+                        currentWager = 0;
+                        wagerInput = "5";
                         break;
 
                     case "question-closed":
                         currentSlot = null;
                         submittingAnswer = false;
                         buzzerNotification = null;
+                        wagerSubmitted = false;
+                        currentWager = 0;
+                        wagerInput = "5";
                         break;
 
                     case "student-status": {
@@ -126,7 +170,13 @@
                         if (msg.answeredSlots) answeredSlots = msg.answeredSlots;
                         if (msg.currentSlot) {
                             currentSlot = msg.currentSlot;
-                            selectedTeamId = teams[0]?.id || "";
+                            if (msg.currentWager) {
+                                wagerSubmitted = true;
+                                currentWager = msg.currentWager;
+                                selectedTeamId = msg.currentTeamId || teams[0]?.id || "";
+                            } else {
+                                selectedTeamId = teams[0]?.id || "";
+                            }
                         }
                         break;
 
@@ -315,12 +365,18 @@
                 <div>
                     <p class="text-gray-400 text-xs uppercase tracking-widest font-medium mb-1">
                         {data.game.board.categories.find((c) =>
-                            c.slots.some((s) => s.id === currentSlot.id),
+                            c.slots.some((s: any) => s.id === currentSlot.id),
                         )?.name}
                     </p>
-                    <p class="text-3xl font-black" style="color: #f59e0b">
-                        ${currentSlot.points}
-                    </p>
+                    {#if currentSlot.isDailyDouble && wagerSubmitted}
+                        <p class="text-3xl font-black" style="color: #f59e0b">
+                            Wager: ${currentWager.toLocaleString()}
+                        </p>
+                    {:else}
+                        <p class="text-3xl font-black" style="color: #f59e0b">
+                            ${currentSlot.points}
+                        </p>
+                    {/if}
                     {#if currentSlot.isDailyDouble}
                         <span class="mt-2 inline-block px-3 py-1 rounded-full text-xs font-black text-white" style="background: #f59e0b">
                             DAILY DOUBLE
@@ -338,80 +394,161 @@
                 </button>
             </div>
 
-            <!-- Buzzer notification -->
-            {#if buzzerNotification}
-                <div class="bg-red-600 rounded-2xl px-5 py-3 mb-5 flex items-center gap-3 animate-pulse">
-                    <svg class="w-6 h-6 text-white shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                    </svg>
-                    <div>
-                        <p class="font-bold text-white text-sm">Buzzer Pressed!</p>
-                        <p class="text-red-200 text-xs">{buzzerNotification.studentName} from {buzzerNotification.teamName}</p>
+            {#if currentSlot.isDailyDouble && !wagerSubmitted}
+                <!-- Daily Double: wager entry phase -->
+                <div class="rounded-2xl p-5 mb-5" style="background: linear-gradient(135deg, #78350f, #b45309)">
+                    <p class="text-amber-200 text-xs uppercase tracking-widest mb-1">Daily Double</p>
+                    <p class="text-white text-sm">Select the wagering team and enter their wager before revealing the clue.</p>
+                </div>
+
+                <!-- Team selector -->
+                <div class="mb-4">
+                    <p class="text-gray-500 text-sm font-medium mb-3">Which team is wagering?</p>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {#each teams as team}
+                            <button
+                                type="button"
+                                onclick={() => (selectedTeamId = team.id)}
+                                class={`p-3 rounded-xl border-2 transition-all text-left ${selectedTeamId === team.id ? "ring-2 ring-gray-400" : "hover:brightness-95"}`}
+                                style={`background: ${team.color}10; border-color: ${team.color}40`}
+                            >
+                                <div class="flex items-center gap-2 mb-0.5">
+                                    <div class="w-2.5 h-2.5 rounded-full" style={`background-color: ${team.color}`}></div>
+                                    <span class="text-gray-800 font-semibold text-sm truncate">{team.name}</span>
+                                </div>
+                                <span class="text-xs font-bold" style={`color: ${team.color}`}>${team.score.toLocaleString()}</span>
+                            </button>
+                        {/each}
                     </div>
                 </div>
-            {/if}
 
-            <!-- Clue section -->
-            <div class="rounded-2xl p-5 mb-4" style="background: linear-gradient(135deg, #1e3a8a, #1d4ed8)">
-                <p class="text-blue-300 text-xs uppercase tracking-widest mb-2">Clue</p>
-                <p class="text-white text-xl leading-relaxed">{currentSlot.question.answer}</p>
-            </div>
-
-            <!-- Answer section -->
-            <div class="bg-amber-50 border border-amber-100 rounded-2xl p-5 mb-5">
-                <p class="text-amber-400 text-xs uppercase tracking-widest mb-2">Correct Response</p>
-                <p class="text-amber-700 text-xl font-semibold">{currentSlot.question.question}</p>
-            </div>
-
-            <!-- Team selector -->
-            <div class="mb-5">
-                <p class="text-gray-500 text-sm font-medium mb-3">Which team is answering?</p>
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {#each teams as team}
+                <!-- Wager input -->
+                <div class="mb-5">
+                    <p class="text-gray-500 text-sm font-medium mb-2">Wager amount</p>
+                    {#if selectedTeamId}
+                        {@const team = teams.find((t) => t.id === selectedTeamId)}
+                        {@const maxBoardPoints = Math.max(...data.game.board.categories.flatMap((c) => c.slots.map((s: any) => s.points)))}
+                        {@const maxWager = Math.max(team?.score ?? 0, maxBoardPoints)}
+                        <p class="text-gray-400 text-xs mb-2">Min $5 · Max ${maxWager.toLocaleString()}</p>
+                    {/if}
+                    <div class="flex gap-2">
+                        <div class="relative flex-1">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                            <input
+                                type="number"
+                                min="5"
+                                bind:value={wagerInput}
+                                onkeydown={(e) => e.key === "Enter" && submitWager()}
+                                class="w-full pl-7 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 font-bold text-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                placeholder="0"
+                            />
+                        </div>
                         <button
                             type="button"
-                            onclick={() => (selectedTeamId = team.id)}
-                            class={`
-                                p-3 rounded-xl border-2 transition-all text-left
-                                ${selectedTeamId === team.id ? "ring-2 ring-gray-400" : "hover:brightness-95"}
-                            `}
-                            style={`background: ${team.color}10; border-color: ${team.color}40`}
+                            onclick={submitWager}
+                            disabled={!selectedTeamId}
+                            class="px-6 py-3 rounded-xl font-black text-white disabled:opacity-40 transition-colors"
+                            style="background: #f59e0b"
                         >
-                            <div class="flex items-center gap-2 mb-0.5">
-                                <div class="w-2.5 h-2.5 rounded-full" style={`background-color: ${team.color}`}></div>
-                                <span class="text-gray-800 font-semibold text-sm truncate">{team.name}</span>
-                            </div>
-                            <span class="text-xs font-bold" style={`color: ${team.color}`}>${team.score}</span>
+                            Lock In
                         </button>
-                    {/each}
+                    </div>
+                    {#if wagerError}
+                        <p class="text-red-500 text-sm mt-2">{wagerError}</p>
+                    {/if}
                 </div>
-            </div>
 
-            <!-- Score buttons -->
-            <div class="flex gap-3">
-                <button
-                    type="button"
-                    onclick={() => submitAnswer(true)}
-                    disabled={submittingAnswer || !selectedTeamId}
-                    class="flex-1 py-4 bg-green-600 hover:bg-green-500 rounded-2xl font-black text-lg text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
-                >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Correct (+${currentSlot.points})
-                </button>
-                <button
-                    type="button"
-                    onclick={() => submitAnswer(false)}
-                    disabled={submittingAnswer || !selectedTeamId}
-                    class="flex-1 py-4 bg-red-600 hover:bg-red-500 rounded-2xl font-black text-lg text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
-                >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    Incorrect (-${currentSlot.points})
-                </button>
-            </div>
+            {:else}
+                <!-- Normal question or Daily Double after wager is set -->
+
+                <!-- Buzzer notification -->
+                {#if buzzerNotification}
+                    <div class="bg-red-600 rounded-2xl px-5 py-3 mb-5 flex items-center gap-3 animate-pulse">
+                        <svg class="w-6 h-6 text-white shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                        </svg>
+                        <div>
+                            <p class="font-bold text-white text-sm">Buzzer Pressed!</p>
+                            <p class="text-red-200 text-xs">{buzzerNotification.studentName} from {buzzerNotification.teamName}</p>
+                        </div>
+                    </div>
+                {/if}
+
+                <!-- Clue section -->
+                <div class="rounded-2xl p-5 mb-4" style="background: linear-gradient(135deg, #1e3a8a, #1d4ed8)">
+                    <p class="text-blue-300 text-xs uppercase tracking-widest mb-2">Clue</p>
+                    <p class="text-white text-xl leading-relaxed">{currentSlot.question.answer}</p>
+                </div>
+
+                <!-- Answer section -->
+                <div class="bg-amber-50 border border-amber-100 rounded-2xl p-5 mb-5">
+                    <p class="text-amber-400 text-xs uppercase tracking-widest mb-2">Correct Response</p>
+                    <p class="text-amber-700 text-xl font-semibold">{currentSlot.question.question}</p>
+                </div>
+
+                {#if !currentSlot.isDailyDouble}
+                    <!-- Team selector (only for non-daily-double) -->
+                    <div class="mb-5">
+                        <p class="text-gray-500 text-sm font-medium mb-3">Which team is answering?</p>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {#each teams as team}
+                                <button
+                                    type="button"
+                                    onclick={() => (selectedTeamId = team.id)}
+                                    class={`p-3 rounded-xl border-2 transition-all text-left ${selectedTeamId === team.id ? "ring-2 ring-gray-400" : "hover:brightness-95"}`}
+                                    style={`background: ${team.color}10; border-color: ${team.color}40`}
+                                >
+                                    <div class="flex items-center gap-2 mb-0.5">
+                                        <div class="w-2.5 h-2.5 rounded-full" style={`background-color: ${team.color}`}></div>
+                                        <span class="text-gray-800 font-semibold text-sm truncate">{team.name}</span>
+                                    </div>
+                                    <span class="text-xs font-bold" style={`color: ${team.color}`}>${team.score.toLocaleString()}</span>
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+                {:else}
+                    <!-- Daily Double: show the wagering team (locked) -->
+                    {@const wageringTeam = teams.find((t) => t.id === selectedTeamId)}
+                    {#if wageringTeam}
+                        <div class="mb-5 p-3 rounded-xl border-2" style={`background: ${wageringTeam.color}10; border-color: ${wageringTeam.color}40`}>
+                            <p class="text-gray-500 text-xs font-medium mb-1 uppercase tracking-widest">Wagering Team</p>
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 rounded-full" style={`background-color: ${wageringTeam.color}`}></div>
+                                <span class="text-gray-800 font-bold">{wageringTeam.name}</span>
+                                <span class="font-black" style={`color: ${wageringTeam.color}`}>${wageringTeam.score.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    {/if}
+                {/if}
+
+                <!-- Score buttons -->
+                {@const displayPoints = currentSlot.isDailyDouble ? currentWager : currentSlot.points}
+                <div class="flex gap-3">
+                    <button
+                        type="button"
+                        onclick={() => submitAnswer(true)}
+                        disabled={submittingAnswer || !selectedTeamId}
+                        class="flex-1 py-4 bg-green-600 hover:bg-green-500 rounded-2xl font-black text-lg text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Correct (+${displayPoints.toLocaleString()})
+                    </button>
+                    <button
+                        type="button"
+                        onclick={() => submitAnswer(false)}
+                        disabled={submittingAnswer || !selectedTeamId}
+                        class="flex-1 py-4 bg-red-600 hover:bg-red-500 rounded-2xl font-black text-lg text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Incorrect (-${displayPoints.toLocaleString()})
+                    </button>
+                </div>
+            {/if}
         </div>
     </div>
 {/if}

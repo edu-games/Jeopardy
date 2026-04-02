@@ -63,7 +63,9 @@ export class GameHub implements DurableObject {
 						currentSlot,
 						answeredSlots: JSON.parse(game.gameState.answeredSlots ?? "[]"),
 						teams: game.teams,
-						buzzerEnabled: game.gameState.buzzerEnabled ?? false
+						buzzerEnabled: game.gameState.buzzerEnabled ?? false,
+						currentWager: game.gameState.currentWager ?? null,
+						currentTeamId: game.gameState.currentTeamId ?? null
 					}));
 				}
 			}
@@ -108,6 +110,9 @@ export class GameHub implements DurableObject {
 					break;
 				case "close-question":
 					await this.handleCloseQuestion(db, ws, gameId, instructorId);
+					break;
+				case "submit-wager":
+					await this.handleSubmitWager(db, ws, gameId, instructorId, event.teamId as string, event.wager as number);
 					break;
 				case "answer":
 					await this.handleAnswer(db, ws, gameId, instructorId, event.isCorrect as boolean, event.teamId as string);
@@ -207,6 +212,8 @@ export class GameHub implements DurableObject {
 			currentSlotId: slotId,
 			questionStartedAt: now,
 			buzzerEnabled,
+			currentWager: null,
+			currentTeamId: null,
 			updatedAt: now
 		}).where(eq(gameState.gameId, gameId));
 
@@ -225,6 +232,7 @@ export class GameHub implements DurableObject {
 			currentTeamId: null,
 			questionStartedAt: null,
 			buzzerEnabled: false,
+			currentWager: null,
 			updatedAt: now
 		}).where(eq(gameState.gameId, gameId));
 
@@ -248,7 +256,14 @@ export class GameHub implements DurableObject {
 		});
 		if (!slot) return ws.send(JSON.stringify({ type: "error", message: "Slot not found" }));
 
-		const scoreChange = isCorrect ? slot.points : -slot.points;
+		let points = slot.points;
+		if (slot.isDailyDouble) {
+			if (!game.gameState?.currentWager) {
+				return ws.send(JSON.stringify({ type: "error", message: "No wager submitted for Daily Double" }));
+			}
+			points = game.gameState.currentWager;
+		}
+		const scoreChange = isCorrect ? points : -points;
 		const now = new Date().toISOString();
 
 		await db.update(teams)
@@ -264,6 +279,7 @@ export class GameHub implements DurableObject {
 			currentTeamId: null,
 			questionStartedAt: null,
 			buzzerEnabled: false,
+			currentWager: null,
 			updatedAt: now
 		}).where(eq(gameState.gameId, gameId));
 
@@ -273,6 +289,48 @@ export class GameHub implements DurableObject {
 		});
 
 		this.broadcast({ type: "answer-submitted", teams: updatedTeams, answeredSlots: answered, currentSlotId: null });
+	}
+
+	private async handleSubmitWager(db: DB, ws: WebSocket, gameId: string, instructorId: string, teamId: string, wager: number) {
+		if (!teamId || !wager || wager < 1) {
+			return ws.send(JSON.stringify({ type: "error", message: "Invalid wager" }));
+		}
+
+		const game = await db.query.games.findFirst({
+			where: (g, { eq }) => eq(g.id, gameId),
+			with: { gameState: true }
+		});
+		if (!game || game.instructorId !== instructorId) {
+			return ws.send(JSON.stringify({ type: "error", message: "Unauthorized" }));
+		}
+		if (game.status !== "IN_PROGRESS") {
+			return ws.send(JSON.stringify({ type: "error", message: "Game is not in progress" }));
+		}
+
+		const currentSlotId = game.gameState?.currentSlotId;
+		if (!currentSlotId) return ws.send(JSON.stringify({ type: "error", message: "No active question" }));
+
+		const slot = await db.query.boardQuestionSlots.findFirst({
+			where: (s, { eq }) => eq(s.id, currentSlotId),
+			with: { question: true, category: { with: { board: true } } }
+		});
+		if (!slot?.isDailyDouble) {
+			return ws.send(JSON.stringify({ type: "error", message: "Current question is not a Daily Double" }));
+		}
+
+		const team = await db.query.teams.findFirst({
+			where: (t, { eq }) => eq(t.id, teamId)
+		});
+		if (!team) return ws.send(JSON.stringify({ type: "error", message: "Team not found" }));
+
+		const now = new Date().toISOString();
+		await db.update(gameState).set({
+			currentWager: wager,
+			currentTeamId: teamId,
+			updatedAt: now
+		}).where(eq(gameState.gameId, gameId));
+
+		this.broadcast({ type: "wager-submitted", teamId, teamName: team.name, wager, currentSlot: slot });
 	}
 
 	private async handleBuzzer(db: DB, ws: WebSocket, gameId: string, studentId: string) {
