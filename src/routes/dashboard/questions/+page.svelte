@@ -70,8 +70,8 @@
 	<!-- Header -->
 	<div class="flex justify-between items-center">
 		<div>
-			<h1 class="text-3xl font-bold text-gray-900">Question Bank</h1>
-			<p class="text-gray-600 mt-1">Manage your Jeopardy questions</p>
+			<h1 class="font-serif-display text-4xl text-gray-900">Question Bank</h1>
+			<p class="text-gray-600 mt-1">Manage your Tile Trivia questions</p>
 		</div>
 		<div class="flex gap-3">
 			<a
@@ -104,7 +104,7 @@
 			</button>
 			<a
 				href="/dashboard/questions/new"
-				class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors flex items-center gap-2"
+				class="px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors flex items-center gap-2"
 			>
 				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
@@ -148,13 +148,27 @@
 			<label for="search" class="block text-sm font-medium text-gray-700 mb-2">
 				Search Questions
 			</label>
-			<input
-				type="text"
-				id="search"
-				bind:value={searchTerm}
-				placeholder="Search by answer or question..."
-				class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-			/>
+			<div class="relative">
+				<svg
+					class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+					width="15"
+					height="15"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="var(--faint)"
+					stroke-width="2"
+				>
+					<circle cx="11" cy="11" r="8" />
+					<path d="m21 21-4.35-4.35" />
+				</svg>
+				<input
+					type="text"
+					id="search"
+					bind:value={searchTerm}
+					placeholder="Search by answer or question..."
+					class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 transition-colors"
+				/>
+			</div>
 		</div>
 
 		<!-- Tag filters -->
@@ -221,7 +235,7 @@
 				{#if data.questions.length === 0}
 					<a
 						href="/dashboard/questions/new"
-						class="inline-block px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors"
+						class="inline-block px-6 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors"
 					>
 						Create First Question
 					</a>

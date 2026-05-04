@@ -73,8 +73,8 @@
 	{#if !success}
 		<!-- Header -->
 		<div class="text-center pt-14 pb-8 shrink-0">
-			<a href="/" class="text-gray-900 font-black text-2xl tracking-tight">
-				Classroom Jeopardy<span class="text-amber-500">!</span>
+			<a href="/" class="font-serif-display text-3xl" style="color: var(--ink); letter-spacing: 0.01em">
+				Tile Trivia<span style="color: var(--gold)">!</span>
 			</a>
 		</div>
 
@@ -86,7 +86,7 @@
 					<div
 						class="w-12 h-14 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-center"
 					>
-						<span class="text-2xl font-black text-amber-500">{char}</span>
+						<span class="text-2xl font-black text-teal-700">{char}</span>
 					</div>
 				{/each}
 			</div>
@@ -127,14 +127,14 @@
 					required
 					placeholder="Your name..."
 					autocomplete="off"
-					class="w-full bg-transparent border-b-2 border-gray-200 text-gray-900 text-2xl font-semibold text-center py-3 mb-8 focus:outline-none focus:border-amber-400 transition-colors placeholder:text-gray-300 disabled:opacity-50"
+					class="w-full bg-transparent border-b-2 border-gray-200 text-gray-900 text-2xl font-semibold text-center py-3 mb-8 focus:outline-none focus:border-teal-500 transition-colors placeholder:text-gray-300 disabled:opacity-50"
 				/>
 
 				<button
 					type="submit"
 					disabled={joining || !name.trim()}
 					class="w-full py-4 font-black text-lg rounded-2xl transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-105"
-					style="background: #f59e0b; color: #fff"
+					style="background: var(--accent); color: #fff"
 				>
 					{#if joining}
 						<span class="flex items-center justify-center gap-2">
@@ -184,7 +184,7 @@
 				</svg>
 			</div>
 
-			<h1 class="text-3xl font-black text-gray-900 mb-1">You're in!</h1>
+			<h1 class="font-serif-display text-4xl text-gray-900 mb-1">You're in!</h1>
 			<p class="text-gray-400 mb-8">
 				Welcome, <span class="text-gray-700 font-semibold">{name}</span>
 			</p>
@@ -206,14 +206,14 @@
 					<p class="text-gray-400 text-xs uppercase tracking-widest">Your team</p>
 				</div>
 			{:else}
-				<div class="px-6 py-4 rounded-2xl mb-6 bg-amber-50 border border-amber-200">
-					<p class="text-amber-600 font-bold">Waiting for team assignment</p>
+				<div class="px-6 py-4 rounded-2xl mb-6 bg-teal-50 border border-teal-200">
+					<p class="text-teal-700 font-bold">Waiting for team assignment</p>
 					<p class="text-gray-400 text-sm mt-1">Your instructor will assign you shortly</p>
 				</div>
 			{/if}
 
 			<div class="flex items-center gap-2">
-				<div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
+				<div class="w-2 h-2 rounded-full bg-teal-600 animate-pulse"></div>
 				<p class="text-gray-400 text-sm">Heading to the game...</p>
 			</div>
 		</div>

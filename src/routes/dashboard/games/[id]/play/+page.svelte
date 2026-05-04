@@ -16,7 +16,9 @@
 	let selectedTeamId = $state('');
 	let submittingAnswer = $state(false);
 	let buzzerNotification = $state<{
+		studentId: string;
 		studentName: string;
+		teamId: string;
 		teamName: string;
 	} | null>(null);
 	let showEndGameConfirm = $state(false);
@@ -131,13 +133,12 @@
 				switch (msg.type) {
 					case 'buzzer-pressed':
 						buzzerNotification = {
+							studentId: msg.studentId,
 							studentName: msg.studentName,
+							teamId: msg.teamId,
 							teamName: msg.teamName
 						};
 						if (msg.teamId) selectedTeamId = msg.teamId as string;
-						setTimeout(() => {
-							buzzerNotification = null;
-						}, 3000);
 						break;
 
 					case 'wager-submitted':
@@ -255,7 +256,7 @@
 				<a
 					href="/dashboard/games/{data.game.id}/results"
 					class="px-3 py-1.5 rounded-xl text-sm font-bold text-white hover:brightness-105 transition-colors"
-					style="background: #f59e0b"
+					style="background: #0f766e"
 				>
 					View Results
 				</a>
@@ -325,7 +326,7 @@
 			<div class="grid grid-cols-6 gap-1 p-2 bg-white/5 shrink-0">
 				{#each data.game.board.categories as category}
 					<div
-						class="text-yellow-400 font-bold text-xs uppercase tracking-wide text-center py-2 px-1"
+						class="text-[#d4a817] font-bold text-xs uppercase tracking-wide text-center py-2 px-1"
 					>
 						{category.name}
 					</div>
@@ -347,13 +348,13 @@
                                     ${
 																			isSlotAnswered(slot.id)
 																				? 'bg-white/[0.03] cursor-not-allowed'
-																				: 'bg-blue-800 hover:bg-blue-600 active:scale-95 cursor-pointer shadow'
+																				: 'bg-teal-700 hover:bg-teal-600 active:scale-95 cursor-pointer shadow'
 																		}
-                                    ${slot.isWildCard && !isSlotAnswered(slot.id) ? 'ring-1 ring-yellow-400' : ''}
+                                    ${slot.isWildCard && !isSlotAnswered(slot.id) ? 'ring-1 ring-[#d4a817]' : ''}
                                 `}
 							>
 								{#if !isSlotAnswered(slot.id)}
-									<span class="text-yellow-400 font-black text-lg md:text-xl">${slot.points}</span>
+									<span class="text-[#d4a817] font-black text-lg md:text-xl">${slot.points}</span>
 								{:else}
 									<svg class="w-5 h-5 text-white/15" fill="currentColor" viewBox="0 0 20 20">
 										<path
@@ -385,18 +386,18 @@
 						)?.name}
 					</p>
 					{#if currentSlot.isWildCard && wagerSubmitted}
-						<p class="text-3xl font-black" style="color: #f59e0b">
+						<p class="text-3xl font-black" style="color: #0f766e">
 							Wager: ${currentWager.toLocaleString()}
 						</p>
 					{:else}
-						<p class="text-3xl font-black" style="color: #f59e0b">
+						<p class="text-3xl font-black" style="color: #0f766e">
 							${currentSlot.points}
 						</p>
 					{/if}
 					{#if currentSlot.isWildCard}
 						<span
 							class="mt-2 inline-block px-3 py-1 rounded-full text-xs font-black text-white"
-							style="background: #f59e0b"
+							style="background: #0f766e"
 						>
 							WILD CARD
 						</span>
@@ -425,7 +426,7 @@
 					class="rounded-2xl p-5 mb-5"
 					style="background: linear-gradient(135deg, #78350f, #b45309)"
 				>
-					<p class="text-amber-200 text-xs uppercase tracking-widest mb-1">Wild Card</p>
+					<p class="text-[#fde68a] text-xs uppercase tracking-widest mb-1">Wild Card</p>
 					<p class="text-white text-sm">
 						Select the wagering team and enter their wager before revealing the clue.
 					</p>
@@ -477,7 +478,7 @@
 								min="5"
 								bind:value={wagerInput}
 								onkeydown={(e) => e.key === 'Enter' && submitWager()}
-								class="w-full pl-7 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 font-bold text-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
+								class="w-full pl-7 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 font-bold text-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
 								placeholder="0"
 							/>
 						</div>
@@ -486,7 +487,7 @@
 							onclick={submitWager}
 							disabled={!selectedTeamId}
 							class="px-6 py-3 rounded-xl font-black text-white disabled:opacity-40 transition-colors"
-							style="background: #f59e0b"
+							style="background: #0f766e"
 						>
 							Lock In
 						</button>
@@ -525,9 +526,9 @@
 				</div>
 
 				<!-- Answer section -->
-				<div class="bg-amber-50 border border-amber-100 rounded-2xl p-5 mb-5">
-					<p class="text-amber-400 text-xs uppercase tracking-widest mb-2">Correct Response</p>
-					<p class="text-amber-700 text-xl font-semibold">{currentSlot.question.response}</p>
+				<div class="bg-teal-50 border border-teal-200 rounded-2xl p-5 mb-5">
+					<p class="text-teal-500 text-xs uppercase tracking-widest mb-2">Correct Response</p>
+					<p class="text-teal-800 text-xl font-semibold">{currentSlot.question.response}</p>
 				</div>
 
 				{#if !currentSlot.isWildCard}
@@ -536,12 +537,21 @@
 						<p class="text-gray-500 text-sm font-medium mb-3">Which team is answering?</p>
 						<div class="grid grid-cols-2 md:grid-cols-3 gap-2">
 							{#each teams as team}
+								{@const buzzed = buzzerNotification?.teamId === team.id}
 								<button
 									type="button"
 									onclick={() => (selectedTeamId = team.id)}
-									class={`p-3 rounded-xl border-2 transition-all text-left ${selectedTeamId === team.id ? 'ring-2 ring-gray-400' : 'hover:brightness-95'}`}
-									style={`background: ${team.color}10; border-color: ${team.color}40`}
+									class={`relative p-3 rounded-xl border-2 transition-all text-left ${selectedTeamId === team.id ? 'ring-2 ring-gray-400' : 'hover:brightness-95'}`}
+									style={`background: ${team.color}10; border-color: ${buzzed ? team.color : team.color + '40'}`}
 								>
+									{#if buzzed}
+										<span
+											class="absolute -top-2 -right-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-sm"
+											style={`background: ${team.color}`}
+										>
+											Buzzed
+										</span>
+									{/if}
 									<div class="flex items-center gap-2 mb-0.5">
 										<div
 											class="w-2.5 h-2.5 rounded-full"
@@ -552,6 +562,11 @@
 									<span class="text-xs font-bold" style={`color: ${team.color}`}
 										>${team.score.toLocaleString()}</span
 									>
+									{#if buzzed && buzzerNotification}
+										<div class="text-[11px] text-gray-600 mt-1 truncate">
+											{buzzerNotification.studentName}
+										</div>
+									{/if}
 								</button>
 							{/each}
 						</div>

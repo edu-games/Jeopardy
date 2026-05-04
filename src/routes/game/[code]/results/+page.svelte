@@ -16,12 +16,12 @@
 	});
 </script>
 
-<div class="min-h-screen bg-[#0f172a] p-4">
+<div class="min-h-screen board-velvet p-4">
 	<div class="max-w-4xl mx-auto">
 		<!-- Header -->
 		<div class="mb-6 bg-white/5 border border-white/10 rounded-2xl p-6">
 			<div class="text-center">
-				<h1 class="text-3xl font-bold text-white mb-2">Game Complete!</h1>
+				<h1 class="font-serif-display text-4xl text-white mb-2">Game Complete!</h1>
 				<p class="text-white/50 text-lg">
 					{data.game.board.name}
 				</p>
@@ -40,7 +40,7 @@
 						/>
 					</svg>
 				</div>
-				<h2 class="text-3xl font-bold text-white mb-2">
+				<h2 class="font-serif-display text-4xl text-white mb-2">
 					🏆 {winningTeam.name} Wins! 🏆
 				</h2>
 				<p class="text-2xl text-yellow-100 font-semibold">
@@ -129,7 +129,7 @@
 								</div>
 							</div>
 							<div class="text-right">
-								<p class="text-3xl font-bold text-white">
+								<p class="font-serif-display text-4xl text-white">
 									${team.score}
 								</p>
 							</div>
@@ -144,13 +144,13 @@
 			<h3 class="text-xl font-bold text-white mb-4 text-center">Game Statistics</h3>
 			<div class="grid grid-cols-2 gap-4 text-center">
 				<div>
-					<p class="text-3xl font-bold text-white">
+					<p class="font-serif-display text-4xl text-white">
 						{totalQuestions}
 					</p>
 					<p class="text-white/50">Questions Answered</p>
 				</div>
 				<div>
-					<p class="text-3xl font-bold text-white">
+					<p class="font-serif-display text-4xl text-white">
 						{data.game.teams.length}
 					</p>
 					<p class="text-white/50">Teams Competed</p>

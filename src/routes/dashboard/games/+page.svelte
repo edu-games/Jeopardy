@@ -8,7 +8,7 @@
 	function getStatusBadge(status: string) {
 		switch (status) {
 			case 'LOBBY':
-				return 'bg-amber-100 text-amber-700';
+				return 'bg-teal-100 text-teal-800';
 			case 'IN_PROGRESS':
 				return 'bg-green-100 text-green-700';
 			case 'COMPLETED':
@@ -36,13 +36,13 @@
 	<!-- Header -->
 	<div class="flex justify-between items-center">
 		<div>
-			<h1 class="text-3xl font-black text-gray-900">Games</h1>
-			<p class="text-gray-400 text-sm mt-0.5">Manage your Jeopardy game sessions</p>
+			<h1 class="font-serif-display text-4xl text-gray-900">Games</h1>
+			<p class="text-gray-400 text-sm mt-0.5">Manage your Tile Trivia game sessions</p>
 		</div>
 		<a
 			href="/dashboard/games/new"
 			class="px-4 py-2 rounded-xl font-bold text-sm text-white transition-all hover:brightness-105 flex items-center gap-2"
-			style="background: #f59e0b"
+			style="background: #0f766e"
 		>
 			<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
 				<path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z" />
@@ -67,7 +67,7 @@
 				<a
 					href="/dashboard/games/new"
 					class="inline-block px-5 py-2.5 rounded-xl font-bold text-sm text-white hover:brightness-105 transition-all"
-					style="background: #f59e0b"
+					style="background: #0f766e"
 				>
 					Create First Game
 				</a>
@@ -120,7 +120,7 @@
 							{#if game.status === 'LOBBY'}
 								<a
 									href={`/dashboard/games/${game.id}/lobby`}
-									class="px-3.5 py-2 rounded-xl font-semibold text-sm text-white bg-amber-400 hover:bg-amber-500 transition-colors"
+									class="px-3.5 py-2 rounded-xl font-semibold text-sm text-white bg-teal-600 hover:bg-teal-700 transition-colors"
 								>
 									Manage Lobby
 								</a>

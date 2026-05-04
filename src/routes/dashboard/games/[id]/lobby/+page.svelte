@@ -117,7 +117,7 @@
 	<div class="flex items-center justify-between mb-8 gap-4">
 		<div>
 			<p class="text-gray-400 text-xs uppercase tracking-widest mb-1">{data.game.board.name}</p>
-			<h1 class="text-3xl font-black text-gray-900">Game Lobby</h1>
+			<h1 class="font-serif-display text-4xl text-gray-900">Game Lobby</h1>
 		</div>
 		<div class="flex items-center gap-3">
 			<!-- Live indicator -->
@@ -173,7 +173,7 @@
 				<div class="flex items-center justify-center gap-1.5 mb-4">
 					{#each data.game.code.split('') as char}
 						<div class="w-9 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-							<span class="text-xl font-black text-amber-500">{char}</span>
+							<span class="text-xl font-black text-teal-700">{char}</span>
 						</div>
 					{/each}
 				</div>
@@ -280,15 +280,15 @@
 
 			<!-- Unassigned Students (Manual mode only) -->
 			{#if data.game.teamAssignment === 'MANUAL' && unassignedStudents.length > 0}
-				<div class="rounded-2xl p-5 bg-amber-50 border border-amber-200">
-					<h3 class="text-amber-700 font-bold mb-3">
+				<div class="rounded-2xl p-5 bg-teal-50 border border-teal-200">
+					<h3 class="text-teal-800 font-bold mb-3">
 						Unassigned ({unassignedStudents.length})
 					</h3>
 					<div class="space-y-2">
 						{#each unassignedStudents as student}
 							{@const isOnline = connectedStudents.has(student.id)}
 							<div
-								class="flex items-center justify-between bg-white px-4 py-2.5 rounded-xl border border-amber-100"
+								class="flex items-center justify-between bg-white px-4 py-2.5 rounded-xl border border-teal-200"
 							>
 								<div class="flex items-center gap-2">
 									<div

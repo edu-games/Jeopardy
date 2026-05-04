@@ -7,8 +7,8 @@
 <div class="min-h-screen flex flex-col items-center justify-center px-6 bg-gray-50">
 	<!-- Logo -->
 	<div class="text-center mb-10">
-		<a href="/" class="font-black text-4xl tracking-wider transition-colors" style="color: #111">
-			JEOPARDY<span style="color: #f59e0b">!</span>
+		<a href="/" class="font-serif-display text-5xl transition-colors" style="color: var(--ink); letter-spacing: 0.01em">
+			Tile Trivia<span style="color: var(--gold)">!</span>
 		</a>
 		<p class="text-gray-400 text-sm mt-2 tracking-widest uppercase">Create your account</p>
 	</div>
@@ -40,7 +40,7 @@
 					value={form?.name ?? ''}
 					required
 					placeholder="John Doe"
-					class="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-400/70 focus:ring-2 focus:ring-amber-400/20 transition-all"
+					class="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20 transition-all"
 				/>
 			</div>
 
@@ -55,7 +55,7 @@
 					value={form?.email ?? ''}
 					required
 					placeholder="your@email.com"
-					class="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-400/70 focus:ring-2 focus:ring-amber-400/20 transition-all"
+					class="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20 transition-all"
 				/>
 			</div>
 
@@ -70,7 +70,7 @@
 					required
 					minlength="8"
 					placeholder="••••••••"
-					class="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-400/70 focus:ring-2 focus:ring-amber-400/20 transition-all"
+					class="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20 transition-all"
 				/>
 				<p class="text-gray-400 text-xs mt-1.5 pl-1">Minimum 8 characters</p>
 			</div>
@@ -87,14 +87,14 @@
 					required
 					minlength="8"
 					placeholder="••••••••"
-					class="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-400/70 focus:ring-2 focus:ring-amber-400/20 transition-all"
+					class="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20 transition-all"
 				/>
 			</div>
 
 			<button
 				type="submit"
 				class="w-full py-3.5 rounded-xl font-bold text-base mt-2 text-white transition-all active:scale-95 hover:opacity-90"
-				style="background: #f59e0b"
+				style="background: var(--accent)"
 			>
 				Create Account
 			</button>
@@ -106,7 +106,7 @@
 				<a
 					href="/login"
 					class="font-semibold transition-colors hover:opacity-80"
-					style="color: #f59e0b"
+					style="color: var(--accent)"
 				>
 					Sign in
 				</a>

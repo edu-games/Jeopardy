@@ -113,10 +113,10 @@
 </script>
 
 <svelte:head>
-	<title>Jeopardy! - Projector View</title>
+	<title>Tile Trivia - Projector View</title>
 </svelte:head>
 
-<div class="fixed inset-0 bg-[#0f172a] flex flex-col">
+<div class="fixed inset-0 board-velvet flex flex-col">
 	<!-- Top bar -->
 	<div class="shrink-0 px-6 py-4 border-b border-white/10 flex items-center justify-between gap-4">
 		<!-- Left: Title + connection dot -->
@@ -126,7 +126,7 @@
 					connectionStatus === 'connected' ? 'bg-green-400' : 'bg-white/20'
 				}`}
 			></div>
-			<h1 class="text-yellow-400 font-black text-3xl md:text-4xl tracking-tight">JEOPARDY!</h1>
+			<h1 class="font-serif-display text-3xl md:text-4xl" style="color: var(--gold); letter-spacing: 0.01em">Tile Trivia<span style="color: var(--gold)">!</span></h1>
 		</div>
 
 		<!-- Right: Game code pill -->
@@ -146,10 +146,10 @@
 					<p class="text-white/50 text-sm md:text-base uppercase tracking-widest font-medium">
 						{currentCategory.name}
 					</p>
-					<p class="text-8xl md:text-9xl font-black" style="color: #f59e0b">💰</p>
+					<p class="text-8xl md:text-9xl font-black" style="color: var(--accent)">💰</p>
 					<span
 						class="inline-block px-8 py-3 rounded-full text-2xl md:text-4xl font-black tracking-wide"
-						style="background: #f59e0b; color: #1e3a8a"
+						style="background: #d4a817; color: #0c1a38"
 					>
 						WILD CARD
 					</span>
@@ -171,7 +171,7 @@
 		<!-- LOBBY status pill -->
 		{#if data.game.status === 'LOBBY'}
 			<div class="shrink-0 flex justify-center">
-				<div class="bg-yellow-500 text-blue-950 rounded-full px-8 py-3 text-xl font-black">
+				<div class="bg-[#d4a817] text-[#0c1a38] rounded-full px-8 py-3 text-xl font-black">
 					Game Starting Soon...
 				</div>
 			</div>

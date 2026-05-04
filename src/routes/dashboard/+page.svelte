@@ -9,7 +9,7 @@
 	<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
 		<div>
 			<p class="text-gray-400 text-xs uppercase tracking-widest mb-0.5">Welcome back</p>
-			<h1 class="text-3xl font-black text-gray-900">{data.instructor.name}</h1>
+			<h1 class="font-serif-display text-4xl text-gray-900">{data.instructor.name}</h1>
 		</div>
 
 		<!-- Compact stats pill -->
@@ -33,7 +33,7 @@
 			<a
 				href="/dashboard/games/new"
 				class="group flex items-center gap-4 p-5 rounded-2xl transition-all hover:brightness-105 active:scale-[0.99] shadow-sm"
-				style="background: #f59e0b"
+				style="background: #0f766e"
 			>
 				<div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
 					<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,9 +130,9 @@
 				class="group flex items-center gap-4 p-5 rounded-2xl bg-white border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all active:scale-[0.99]"
 			>
 				<div
-					class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0 group-hover:bg-amber-100 transition-colors"
+					class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 group-hover:bg-teal-100 transition-colors"
 				>
-					<svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg class="w-5 h-5 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"

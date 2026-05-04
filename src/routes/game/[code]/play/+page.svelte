@@ -176,8 +176,8 @@
 						<p class="text-gray-900 font-bold text-sm leading-tight">{myTeam.name}</p>
 					</div>
 				{:else}
-					<div class="px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200">
-						<p class="text-amber-600 text-xs font-medium">Awaiting team</p>
+					<div class="px-3 py-1.5 rounded-full bg-teal-50 border border-teal-200">
+						<p class="text-teal-700 text-xs font-medium">Awaiting team</p>
 					</div>
 				{/if}
 			</div>
@@ -209,17 +209,17 @@
 				<div class="relative">
 					<div
 						class="w-24 h-24 rounded-full border-2 flex items-center justify-center bg-white shadow-sm"
-						style="border-color: {myTeam ? myTeam.color + '60' : '#f59e0b60'}"
+						style="border-color: {myTeam ? myTeam.color + '60' : '#0f766e60'}"
 					>
 						<div
 							class="absolute inset-0 rounded-full animate-ping opacity-20"
-							style="background: {myTeam?.color ?? '#f59e0b'}"
+							style="background: {myTeam?.color ?? '#0f766e'}"
 						></div>
 						<span class="text-4xl relative z-10">👋</span>
 					</div>
 				</div>
 				<div>
-					<h1 class="text-gray-900 font-black text-3xl mb-2">You're in!</h1>
+					<h1 class="font-serif-display text-4xl text-gray-900 mb-2">You're in!</h1>
 					<p class="text-gray-400 text-base">
 						Waiting for the instructor<br />to start the game...
 					</p>
@@ -246,16 +246,16 @@
 					<div class="flex items-center gap-2">
 						{#if currentSlot.isWildCard}
 							<span
-								class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-amber-400 text-white"
+								class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-teal-600 text-white"
 								>DD</span
 							>
 						{/if}
 						{#if wildCardWager !== null}
-							<p class="text-amber-500 font-black text-lg">
+							<p class="text-teal-700 font-black text-lg">
 								Wager: ${wildCardWager.toLocaleString()}
 							</p>
 						{:else}
-							<p class="text-amber-500 font-black text-lg">${currentSlot.points}</p>
+							<p class="text-teal-700 font-black text-lg">${currentSlot.points}</p>
 						{/if}
 					</div>
 				</div>
@@ -266,9 +266,9 @@
 						class="flex-1 rounded-3xl flex flex-col items-center justify-center gap-4 p-6"
 						style="background: linear-gradient(135deg, #78350f, #b45309)"
 					>
-						<p class="text-amber-200 text-sm uppercase tracking-widest font-bold">Wild Card!</p>
+						<p class="text-[#fde68a] text-sm uppercase tracking-widest font-bold">Wild Card!</p>
 						<p class="text-white text-4xl font-black">💰</p>
-						<p class="text-amber-200 text-sm text-center">Wager is being placed...</p>
+						<p class="text-[#fde68a] text-sm text-center">Wager is being placed...</p>
 					</div>
 				{:else}
 					<!-- Clue card -->
@@ -371,12 +371,12 @@
 					<div class="relative w-24 h-24 flex items-center justify-center">
 						<div
 							class="absolute inset-0 rounded-full border-2 border-gray-200 animate-spin"
-							style="border-top-color: {myTeam?.color ?? '#f59e0b'}"
+							style="border-top-color: {myTeam?.color ?? '#0f766e'}"
 						></div>
 						<span class="text-3xl">🎯</span>
 					</div>
 					<div>
-						<h2 class="text-gray-900 font-black text-2xl">Get ready!</h2>
+						<h2 class="font-serif-display text-3xl text-gray-900">Get ready!</h2>
 						<p class="text-gray-400 text-sm mt-1">The instructor is picking a question</p>
 					</div>
 					{#if myTeam}
@@ -393,7 +393,7 @@
 			<div class="flex-1 flex flex-col items-center justify-center text-center gap-5">
 				<div class="text-7xl">🏆</div>
 				<div>
-					<h2 class="text-gray-900 font-black text-3xl">Game over!</h2>
+					<h2 class="font-serif-display text-4xl text-gray-900">Game over!</h2>
 					<p class="text-gray-400 mt-1">Thanks for playing</p>
 				</div>
 				{#if myTeam}
@@ -402,7 +402,7 @@
 						style="border-color: {myTeam.color}30"
 					>
 						<p class="text-gray-400 text-xs uppercase tracking-widest">Final score</p>
-						<p class="font-black text-3xl mt-0.5" style="color: {myTeam.color}">
+						<p class="font-serif-display text-4xl mt-0.5" style="color: {myTeam.color}">
 							${myTeam.score.toLocaleString()}
 						</p>
 						<p class="text-gray-500 text-sm">{myTeam.name} · #{myRank}</p>
@@ -411,7 +411,7 @@
 				<a
 					href="/game/{data.game.code}/results?studentId={data.student.id}"
 					class="px-8 py-4 rounded-2xl font-black text-lg text-white hover:brightness-105 transition-all"
-					style="background: #f59e0b"
+					style="background: var(--accent)"
 				>
 					See Results
 				</a>

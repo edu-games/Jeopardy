@@ -40,7 +40,7 @@
 					/>
 				</svg>
 			</a>
-			<h1 class="text-3xl font-bold text-gray-900">Create New Question</h1>
+			<h1 class="font-serif-display text-4xl text-gray-900">Create New Question</h1>
 		</div>
 		<p class="text-gray-600">Add a new question to your question bank</p>
 	</div>
@@ -172,7 +172,7 @@
 			<div class="flex gap-4 pt-4 border-t">
 				<button
 					type="submit"
-					class="px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors font-medium"
+					class="px-6 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors font-medium"
 				>
 					Create Question
 				</button>

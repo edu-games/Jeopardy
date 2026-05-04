@@ -37,12 +37,12 @@
 	<!-- Header -->
 	<div class="flex justify-between items-center">
 		<div>
-			<h1 class="text-3xl font-bold text-gray-900">Boards</h1>
-			<p class="text-gray-600 mt-1">Manage your Jeopardy game boards</p>
+			<h1 class="font-serif-display text-4xl text-gray-900">Boards</h1>
+			<p class="text-gray-600 mt-1">Manage your Tile Trivia game boards</p>
 		</div>
 		<a
 			href="/dashboard/boards/new"
-			class="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors flex items-center gap-2"
+			class="px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors flex items-center gap-2"
 		>
 			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -89,10 +89,10 @@
 					/>
 				</svg>
 				<h3 class="text-lg font-semibold text-gray-900 mb-2">No boards yet</h3>
-				<p class="text-gray-600 mb-4">Create your first Jeopardy board to get started!</p>
+				<p class="text-gray-600 mb-4">Create your first Tile Trivia board to get started!</p>
 				<a
 					href="/dashboard/boards/new"
-					class="inline-block px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors"
+					class="inline-block px-6 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors"
 				>
 					Create First Board
 				</a>
@@ -172,7 +172,7 @@
 											? 'bg-green-500'
 											: completeness.percentage > 50
 												? 'bg-blue-500'
-												: 'bg-yellow-500'
+												: 'bg-[#d4a817]'
 									}`}
 									style={`width: ${completeness.percentage}%`}
 								></div>

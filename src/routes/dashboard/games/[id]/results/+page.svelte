@@ -28,7 +28,7 @@
 							/>
 						</svg>
 					</a>
-					<h1 class="text-3xl font-bold text-white">Game Results</h1>
+					<h1 class="font-serif-display text-4xl text-white">Game Results</h1>
 				</div>
 				<p class="text-white/50">{data.game.board.name}</p>
 			</div>
@@ -53,7 +53,7 @@
 					/>
 				</svg>
 			</div>
-			<h2 class="text-4xl font-bold text-white mb-2">
+			<h2 class="font-serif-display text-5xl text-white mb-2">
 				🏆 {winningTeam.name} Wins! 🏆
 			</h2>
 			<p class="text-2xl text-yellow-100 font-semibold">
@@ -218,7 +218,7 @@
 		</a>
 		<a
 			href="/dashboard/games/{data.game.id}/play"
-			class="px-6 py-3 bg-yellow-400 text-blue-950 rounded-xl hover:bg-yellow-300 transition-colors font-bold"
+			class="px-6 py-3 bg-[#d4a817] text-[#0c1a38] rounded-xl hover:opacity-90 transition-colors font-bold"
 		>
 			View Game Board
 		</a>

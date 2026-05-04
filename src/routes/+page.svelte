@@ -9,152 +9,179 @@
 	async function handleJoinGame(e: Event) {
 		e.preventDefault();
 		if (!gameCode.trim()) return;
-
 		isJoining = true;
 		window.location.href = `/game/${gameCode.toUpperCase()}/join`;
 	}
 
-	function formatGameCode(value: string) {
-		return value
+	function handleCodeInput(e: Event) {
+		const t = e.target as HTMLInputElement;
+		gameCode = t.value
 			.toUpperCase()
 			.replace(/[^A-Z0-9]/g, '')
 			.slice(0, 6);
 	}
-
-	function handleCodeInput(e: Event) {
-		const target = e.target as HTMLInputElement;
-		gameCode = formatGameCode(target.value);
-	}
 </script>
 
-<div class="min-h-screen flex flex-col bg-gray-50">
-	<!-- Nav -->
-	<nav
-		class="shrink-0 bg-white border-b border-gray-100 px-8 py-0 flex items-center justify-between h-14"
-	>
-		<span class="text-gray-900 font-black text-sm tracking-[0.12em] uppercase"
-			>Classroom Jeopardy</span
+<div class="min-h-screen flex flex-col" style="background: var(--ink)">
+	<!-- Top bar -->
+	<div class="flex items-center justify-between px-6 sm:px-10 py-5">
+		<a
+			href="/"
+			class="font-serif-display text-lg"
+			style="color: #fff; letter-spacing: 0.01em"
 		>
-		<div class="flex items-center gap-3">
+			Tile <span style="color: var(--gold)">Trivia</span>
+		</a>
+		<div class="flex items-center gap-2">
 			{#if data.instructor}
-				<span class="text-gray-500 text-sm">Hey, {data.instructor.name.split(' ')[0]}</span>
 				<a
 					href="/dashboard"
-					class="px-4 py-1.5 text-sm font-bold rounded-lg transition-all hover:brightness-105"
-					style="background: #f59e0b; color: #fff"
+					class="px-4 py-1.5 text-sm font-semibold rounded-lg transition-all hover:brightness-110"
+					style="background: var(--gold); color: var(--ink)"
 				>
 					Dashboard
 				</a>
 			{:else}
 				<a
 					href="/login"
-					class="text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors"
+					class="font-semibold transition-colors"
+					style="padding: 7px 16px; font-size: 13px; border-radius: 8px; color: rgba(255,255,255,0.5)"
 				>
-					Sign In
+					Sign in
 				</a>
 				<a
 					href="/register"
-					class="px-4 py-1.5 text-sm font-bold rounded-lg transition-all hover:brightness-105"
-					style="background: #f59e0b; color: #fff"
+					class="font-semibold transition-colors"
+					style="padding: 7px 16px; font-size: 13px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.7)"
 				>
 					Register
 				</a>
 			{/if}
 		</div>
-	</nav>
+	</div>
 
 	<!-- Hero -->
-	<div class="flex-1 flex flex-col items-center justify-center px-6 py-16">
-		<!-- Title -->
-		<div class="text-center mb-12">
-			<h1
-				class="font-black leading-none tracking-tight mb-3"
-				style="font-size: clamp(4rem, 13vw, 9rem); color: #111"
+	<div
+		class="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center"
+	>
+		<!-- Decorative rule -->
+		<div class="flex items-center gap-3 mb-7">
+			<div style="height:1px; width:48px; background: rgba(212,168,23,0.4)"></div>
+			<span
+				class="text-[10px] font-semibold uppercase"
+				style="color: rgba(212,168,23,0.6); letter-spacing: 0.2em"
 			>
-				JEOPARDY<span style="color: #f59e0b">!</span>
-			</h1>
-			<p class="text-gray-400 text-sm tracking-widest uppercase">
-				Live quiz games for your classroom
-			</p>
+				Live Quiz
+			</span>
+			<div style="height:1px; width:48px; background: rgba(212,168,23,0.4)"></div>
 		</div>
 
-		<!-- Panels -->
-		<div class="grid md:grid-cols-5 gap-4 w-full max-w-3xl items-start">
-			<!-- Student join — primary -->
-			<div
-				class="md:col-span-3 rounded-2xl p-7 flex flex-col bg-white border border-gray-100 shadow-sm"
-			>
-				<p class="text-amber-500/80 text-[10px] uppercase tracking-[0.3em] mb-1">Students</p>
-				<h2 class="text-gray-900 font-bold text-2xl mb-6">Join a Game</h2>
+		<h1
+			class="font-serif-display"
+			style="font-size: clamp(4rem, 11vw, 8.5rem); color:#fff; line-height: 0.9; letter-spacing: 0.01em; margin-bottom: 16px"
+		>
+			Tile Trivia<span style="color: var(--gold); font-style: italic">!</span>
+		</h1>
+		<p style="font-size:15px; color: rgba(255,255,255,0.35); margin-bottom: 56px">
+			Real-time team quiz games for higher education
+		</p>
 
-				<form onsubmit={handleJoinGame} class="flex flex-col gap-4">
-					<div>
-						<label
-							for="gameCode"
-							class="text-gray-400 text-[10px] uppercase tracking-widest block mb-2"
-							>Game Code</label
-						>
-						<input
-							type="text"
-							id="gameCode"
-							bind:value={gameCode}
-							oninput={handleCodeInput}
-							placeholder="ABC123"
-							class="w-full rounded-xl px-5 py-3.5 text-2xl font-black tracking-[0.2em] text-center uppercase transition-all focus:outline-none focus:ring-2 focus:ring-amber-400/50 bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-300 caret-amber-400"
-							maxlength="6"
-							required
-							autocomplete="off"
-						/>
-					</div>
+		<!-- Two panels -->
+		<div
+			class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full"
+			style="max-width: 680px"
+		>
+			<!-- Join -->
+			<div
+				class="text-left"
+				style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 28px"
+			>
+				<span
+					class="block text-[10px] font-semibold uppercase mb-3"
+					style="color: rgba(212,168,23,0.7); letter-spacing: 0.2em"
+				>
+					For Students
+				</span>
+				<p
+					class="font-serif-display mb-5"
+					style="font-size: 20px; color:#fff"
+				>
+					Join a game
+				</p>
+				<form onsubmit={handleJoinGame}>
+					<input
+						type="text"
+						bind:value={gameCode}
+						oninput={handleCodeInput}
+						placeholder="Enter code"
+						maxlength="6"
+						required
+						autocomplete="off"
+						class="w-full mono-nums text-center font-bold uppercase mb-3 focus:outline-none"
+						style="padding: 11px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.07); color: #fff; font-size: 22px; letter-spacing: 0.18em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace"
+					/>
 					<button
 						type="submit"
-						disabled={isJoining || !gameCode.trim()}
-						class="w-full py-3.5 rounded-xl font-bold text-base text-white transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-105"
-						style="background: #f59e0b"
+						disabled={isJoining || gameCode.length !== 6}
+						class="w-full font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110"
+						style="background: var(--gold); color: var(--ink); padding: 11px; font-size: 13px"
 					>
-						{isJoining ? 'Joining...' : 'Join Game'}
+						{isJoining ? 'Joining…' : 'Join Game →'}
 					</button>
 				</form>
 			</div>
 
-			<!-- Instructor — secondary -->
+			<!-- Instructor -->
 			<div
-				class="md:col-span-2 rounded-2xl p-6 flex flex-col justify-between bg-white border border-gray-100 shadow-sm"
+				class="text-left flex flex-col"
+				style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 28px"
 			>
-				<div>
-					<p class="text-gray-400 text-[10px] uppercase tracking-[0.3em] mb-1">Instructors</p>
-					<h2 class="text-gray-900 font-bold text-xl mb-5">Run a Game</h2>
-					<ul class="space-y-2.5 mb-6">
-						{#each ['Custom question banks', 'Drag-and-drop boards', 'Live buzz-in & scoring'] as feature}
-							<li class="flex items-center gap-2.5">
-								<div class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></div>
-								<span class="text-gray-500 text-sm">{feature}</span>
-							</li>
-						{/each}
-					</ul>
-				</div>
+				<span
+					class="block text-[10px] font-semibold uppercase mb-3"
+					style="color: rgba(255,255,255,0.3); letter-spacing: 0.2em"
+				>
+					For Instructors
+				</span>
+				<p
+					class="font-serif-display mb-4"
+					style="font-size: 20px; color:#fff"
+				>
+					Run a game
+				</p>
+				<ul class="flex-1 mb-6 space-y-2">
+					{#each ['Custom question banks', 'Drag-and-drop boards', 'Live buzz-in & scoring'] as f}
+						<li class="flex items-center gap-2">
+							<div
+								class="shrink-0"
+								style="width:4px; height:4px; border-radius:50%; background: rgba(212,168,23,0.5)"
+							></div>
+							<span style="font-size:13px; color: rgba(255,255,255,0.45)">{f}</span>
+						</li>
+					{/each}
+				</ul>
 				<div class="flex flex-col gap-2">
 					{#if data.instructor}
 						<a
 							href="/dashboard"
-							class="block text-center py-2.5 rounded-xl font-bold text-sm transition-all hover:brightness-105"
-							style="background: #f59e0b; color: #fff"
+							class="w-full text-center font-semibold rounded-lg transition-colors"
+							style="padding: 7px 16px; font-size: 13px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.85)"
 						>
 							Go to Dashboard
 						</a>
 					{:else}
 						<a
 							href="/register"
-							class="block text-center py-2.5 rounded-xl font-bold text-sm hover:bg-gray-800 transition-colors"
-							style="background: #111; color: white"
+							class="w-full text-center font-semibold rounded-lg transition-colors"
+							style="padding: 7px 16px; font-size: 13px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.8)"
 						>
 							Create Account
 						</a>
 						<a
 							href="/login"
-							class="block text-center py-2.5 rounded-xl font-semibold text-sm text-gray-500 hover:text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors"
+							class="w-full text-center font-semibold rounded-lg"
+							style="padding: 7px 16px; color: rgba(255,255,255,0.35); font-size: 12px"
 						>
-							Sign In
+							Already have an account
 						</a>
 					{/if}
 				</div>
@@ -162,7 +189,4 @@
 		</div>
 	</div>
 
-	<footer class="shrink-0 text-center py-5 text-gray-300 text-xs">
-		&copy; {new Date().getFullYear()} Classroom Jeopardy
-	</footer>
 </div>

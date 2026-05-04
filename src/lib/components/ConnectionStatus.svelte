@@ -11,7 +11,7 @@
 		<span class="text-xs text-green-300/80">Live</span>
 	{:else if status === 'connecting'}
 		<div
-			class="w-2 h-2 md:w-3 md:h-3 rounded-full bg-yellow-400 animate-pulse"
+			class="w-2 h-2 md:w-3 md:h-3 rounded-full bg-[#d4a817] animate-pulse"
 			title="Connecting"
 		></div>
 		<span class="text-xs text-yellow-300/80">Connecting...</span>

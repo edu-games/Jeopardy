@@ -182,9 +182,9 @@
 					/>
 				</svg>
 			</a>
-			<h1 class="text-3xl font-bold text-gray-900">Create New Board</h1>
+			<h1 class="font-serif-display text-4xl text-gray-900">Create New Board</h1>
 		</div>
-		<p class="text-gray-600">Build a Jeopardy board with 6 categories and 5 questions each</p>
+		<p class="text-gray-600">Build a Tile Trivia board with 6 categories and 5 questions each</p>
 	</div>
 
 	{#if error}
@@ -268,7 +268,7 @@
 								<div class="flex items-center gap-2">
 									<span class="text-sm font-medium text-gray-700">${slot.points}</span>
 									{#if slot.isWildCard}
-										<span class="text-xs bg-yellow-500 text-white px-2 py-1 rounded-full">DD</span>
+										<span class="text-xs bg-[#d4a817] text-white px-2 py-1 rounded-full">DD</span>
 									{/if}
 								</div>
 								<div class="flex gap-1">
@@ -331,7 +331,7 @@
 			type="button"
 			onclick={saveBoard}
 			disabled={saving}
-			class="px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex-1"
+			class="px-6 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex-1"
 		>
 			{saving ? 'Saving...' : 'Save Board'}
 		</button>

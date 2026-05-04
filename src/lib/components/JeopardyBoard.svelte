@@ -12,44 +12,52 @@
 	}
 </script>
 
-<div class="flex-1 bg-[#0f172a] flex flex-col min-h-0">
+<div class="board-velvet flex-1 flex flex-col min-h-0 rounded-xl overflow-hidden">
 	<!-- Category Headers -->
-	<div class="grid grid-cols-6 gap-1 md:gap-2 p-2 flex-shrink-0">
+	<div class="grid grid-cols-6 gap-[3px] px-2.5 pt-2.5 pb-1 flex-shrink-0">
 		{#each categories as category}
-			<div class="bg-white/5 border border-white/10 rounded-xl p-2 md:p-4 text-center">
-				<h3
-					class="text-yellow-400 font-bold text-xs md:text-sm lg:text-base uppercase tracking-widest line-clamp-2"
+			<div class="px-1.5 py-2 text-center">
+				<span
+					class="font-serif-display block leading-tight"
+					style="color: var(--gold); font-size: clamp(10px, 1.4vw, 15px)"
 				>
 					{category.name}
-				</h3>
+				</span>
 			</div>
 		{/each}
 	</div>
+	<div style="height:1px; background: rgba(255,255,255,0.07); margin: 0 10px"></div>
 
 	<!-- Question Grid -->
-	<div class="grid grid-cols-6 gap-1 md:gap-2 flex-1 p-2 pt-0">
+	<div
+		class="grid grid-cols-6 gap-[3px] flex-1 p-2.5 pt-1.5 min-h-0"
+		style="grid-template-rows: repeat(5, 1fr)"
+	>
 		{#each Array.from({ length: 5 }, (_, rowIndex) => rowIndex) as rowIndex}
 			{#each categories as category}
 				{@const slot = category.slots.find((s) => s.row === rowIndex)}
 				{#if slot}
+					{@const answered = isSlotAnswered(slot.id)}
+					{@const isDD = slot.isDailyDouble && !answered}
 					<div
-						class={`
-                            rounded-xl font-semibold transition-all flex items-center justify-center
-                            ${
-															isSlotAnswered(slot.id)
-																? 'bg-white/5 text-white/10'
-																: 'bg-blue-800 hover:bg-blue-700 text-yellow-400 font-black'
-														}
-                            ${slot.isWildCard && !isSlotAnswered(slot.id) ? 'ring-2 ring-yellow-400' : ''}
-                        `}
+						class="rounded-md flex items-center justify-center transition-colors"
+						style="background: {answered
+							? 'rgba(255,255,255,0.03)'
+							: 'rgba(13,100,93,0.6)'}; border: 1.5px solid {isDD
+							? 'var(--gold)'
+							: 'rgba(255,255,255,0.06)'}"
 					>
-						{#if !isSlotAnswered(slot.id)}
-							<div class="text-center text-xl md:text-3xl lg:text-5xl">
+						{#if !answered}
+							<span
+								class="font-serif-display mono-nums"
+								style="color: var(--gold); font-size: clamp(16px, 2.6vw, 36px); letter-spacing: -0.02em"
+							>
 								${slot.points}
-							</div>
+							</span>
 						{:else}
 							<svg
-								class="w-5 md:w-8 lg:w-10 h-5 md:h-8 lg:h-10 text-white/10"
+								class="w-5 md:w-8 lg:w-10 h-5 md:h-8 lg:h-10"
+								style="color: rgba(255,255,255,0.10)"
 								fill="currentColor"
 								viewBox="0 0 20 20"
 							>

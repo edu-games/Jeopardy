@@ -77,9 +77,9 @@
 					/>
 				</svg>
 			</a>
-			<h1 class="text-3xl font-bold text-gray-900">Create New Game</h1>
+			<h1 class="font-serif-display text-4xl text-gray-900">Create New Game</h1>
 		</div>
-		<p class="text-gray-600">Set up a new Jeopardy game session</p>
+		<p class="text-gray-600">Set up a new Tile Trivia game session</p>
 	</div>
 
 	{#if error}
@@ -97,7 +97,7 @@
 				<p class="text-gray-600 mb-4">You don't have any complete boards yet.</p>
 				<a
 					href="/dashboard/boards/new"
-					class="inline-block px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors"
+					class="inline-block px-6 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors"
 				>
 					Create a Board
 				</a>
@@ -222,7 +222,7 @@
 				type="button"
 				onclick={createGame}
 				disabled={creating || !selectedBoardId}
-				class="flex-1 px-6 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+				class="flex-1 px-6 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
 			>
 				{creating ? 'Creating Game...' : 'Create Game'}
 			</button>
