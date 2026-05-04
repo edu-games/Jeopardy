@@ -1,5 +1,5 @@
 {
-	"name": "classroom-jeopardy-do",
+	"name": "tile-trivia-do",
 	"main": "src/do-worker.ts",
 	"compatibility_date": "2024-09-23",
 	"compatibility_flags": ["nodejs_compat"],

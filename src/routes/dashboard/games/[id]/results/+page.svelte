@@ -3,224 +3,206 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// Calculate game statistics
-	let totalQuestions = $derived(data.game.gameState?.answeredSlots?.length || 0);
-	let totalStudents = $derived(data.game.students.length);
-	let winningTeam = $derived(data.game.teams[0]); // Already sorted by score DESC
-	let studentsPerTeam = $derived((teamId: string) => {
-		return data.game.students.filter((s) => s.team?.id === teamId);
+	const totalQuestions = $derived.by(() => {
+		const raw = data.game.gameState?.answeredSlots;
+		if (!raw) return 0;
+		if (Array.isArray(raw)) return raw.length;
+		try {
+			const parsed = JSON.parse(raw as unknown as string);
+			return Array.isArray(parsed) ? parsed.length : 0;
+		} catch {
+			return 0;
+		}
 	});
+	const totalStudents = $derived(data.game.students.length);
+	const sortedTeams = $derived([...data.game.teams].sort((a, b) => b.score - a.score));
+	const winningTeam = $derived(sortedTeams[0]);
+
+	function studentsForTeam(teamId: string) {
+		return data.game.students.filter((s) => s.team?.id === teamId);
+	}
+
+	function formatDate(d: string | Date | null | undefined) {
+		if (!d) return '';
+		try {
+			return new Date(d).toLocaleDateString('en-US', {
+				month: 'long',
+				day: 'numeric',
+				year: 'numeric'
+			});
+		} catch {
+			return '';
+		}
+	}
 </script>
 
-<div class="max-w-7xl mx-auto">
+<div>
 	<!-- Header -->
-	<div class="mb-8">
-		<div class="flex items-center justify-between mb-4">
-			<div>
-				<div class="flex items-center gap-2 mb-2">
-					<a href="/dashboard/games" class="text-white/50 hover:text-white transition-colors">
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M15 19l-7-7 7-7"
-							/>
-						</svg>
-					</a>
-					<h1 class="font-serif-display text-4xl text-white">Game Results</h1>
-				</div>
-				<p class="text-white/50">{data.game.board.name}</p>
-			</div>
-			<a
-				href="/dashboard/games"
-				class="px-6 py-3 bg-white/10 text-white/70 border border-white/10 rounded-xl hover:bg-white/15 transition-colors font-medium"
-			>
-				Back to Games
-			</a>
-		</div>
+	<div style="margin-bottom: 28px">
+		<a
+			href="/dashboard/games"
+			class="inline-flex items-center hover:opacity-70 transition-opacity"
+			style="gap: 5px; font-size: 12px; color: var(--muted); margin-bottom: 10px"
+		>
+			<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<path d="M15 18l-6-6 6-6" />
+			</svg>
+			Back to Games
+		</a>
+		<h1 class="font-serif-display" style="font-size: 28px; color: var(--ink); line-height: 1.1">
+			Game Results
+		</h1>
+		<p style="font-size: 13px; color: var(--muted); margin-top: 2px">
+			{data.game.board.name}{data.game.createdAt ? ` — ${formatDate(data.game.createdAt)}` : ''}
+		</p>
 	</div>
 
-	<!-- Winner Celebration -->
+	<!-- Winner banner -->
 	{#if winningTeam}
 		<div
-			class="bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl p-8 mb-8 shadow-xl text-center"
+			class="flex items-center"
+			style="border-radius: 14px; padding: 28px 32px; margin-bottom: 24px; gap: 20px; background: linear-gradient(135deg, #d4a817, #b8891e); box-shadow: 0 8px 32px rgba(212,168,23,0.25)"
 		>
-			<div class="mb-4">
-				<svg class="w-20 h-20 mx-auto text-white" fill="currentColor" viewBox="0 0 20 20">
-					<path
-						d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
-					/>
-				</svg>
+			<div style="font-size: 56px">🏆</div>
+			<div class="flex-1">
+				<span
+					class="block font-semibold uppercase"
+					style="font-size: 10px; letter-spacing: 0.2em; color: rgba(255,255,255,0.6); margin-bottom: 4px"
+				>
+					Winner
+				</span>
+				<h2
+					class="font-serif-display"
+					style="font-size: 30px; color: #fff; line-height: 1"
+				>
+					{winningTeam.name}
+				</h2>
 			</div>
-			<h2 class="font-serif-display text-5xl text-white mb-2">
-				🏆 {winningTeam.name} Wins! 🏆
-			</h2>
-			<p class="text-2xl text-yellow-100 font-semibold">
-				${winningTeam.score}
-			</p>
-			<p class="text-yellow-100 mt-2">
-				{studentsPerTeam(winningTeam.id).length} students
-			</p>
+			<div class="text-right">
+				<div
+					class="font-serif-display mono-nums"
+					style="font-size: 44px; color: #fff; line-height: 1"
+				>
+					${winningTeam.score.toLocaleString()}
+				</div>
+				<p
+					style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 3px"
+				>
+					Final Score
+				</p>
+			</div>
 		</div>
 	{/if}
 
-	<!-- Game Statistics -->
-	<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-		<div class="bg-white/5 border border-white/10 rounded-2xl p-6">
-			<div class="flex items-center gap-3">
-				<div class="bg-blue-500/20 rounded-full p-3">
-					<svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-						/>
-					</svg>
+	<!-- Stats -->
+	<div class="grid grid-cols-3" style="gap: 10px; margin-bottom: 24px">
+		{#each [{ l: 'Questions Answered', v: totalQuestions }, { l: 'Total Students', v: totalStudents }, { l: 'Teams', v: data.game.teams.length }] as s}
+			<div
+				class="flex items-center"
+				style="background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; box-shadow: 0 1px 2px rgba(15,23,42,.04); padding: 18px; gap: 12px"
+			>
+				<div
+					class="font-serif-display mono-nums"
+					style="font-size: 32px; color: var(--ink); line-height: 1"
+				>
+					{s.v}
 				</div>
-				<div>
-					<p class="text-white/50 text-sm">Questions Answered</p>
-					<p class="text-2xl font-bold text-white">
-						{totalQuestions}
-					</p>
-				</div>
+				<span
+					class="font-semibold uppercase"
+					style="font-size: 10px; letter-spacing: 0.12em; color: var(--muted)"
+				>
+					{s.l}
+				</span>
 			</div>
-		</div>
-
-		<div class="bg-white/5 border border-white/10 rounded-2xl p-6">
-			<div class="flex items-center gap-3">
-				<div class="bg-green-500/20 rounded-full p-3">
-					<svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-						/>
-					</svg>
-				</div>
-				<div>
-					<p class="text-white/50 text-sm">Total Students</p>
-					<p class="text-2xl font-bold text-white">
-						{totalStudents}
-					</p>
-				</div>
-			</div>
-		</div>
-
-		<div class="bg-white/5 border border-white/10 rounded-2xl p-6">
-			<div class="flex items-center gap-3">
-				<div class="bg-purple-500/20 rounded-full p-3">
-					<svg
-						class="w-6 h-6 text-purple-400"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-						/>
-					</svg>
-				</div>
-				<div>
-					<p class="text-white/50 text-sm">Teams</p>
-					<p class="text-2xl font-bold text-white">
-						{data.game.teams.length}
-					</p>
-				</div>
-			</div>
-		</div>
+		{/each}
 	</div>
 
-	<!-- Team Rankings -->
-	<div class="bg-white/5 border border-white/10 rounded-2xl mb-8">
-		<div class="p-6 border-b border-white/10">
-			<h2 class="text-xl font-bold text-white">Team Rankings</h2>
+	<!-- Final rankings -->
+	<div
+		style="background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; box-shadow: 0 1px 2px rgba(15,23,42,.04); overflow: hidden; margin-bottom: 20px"
+	>
+		<div
+			style="padding: 12px 20px; border-bottom: 1px solid var(--rule); background: var(--bg)"
+		>
+			<h2
+				class="font-serif-display"
+				style="font-size: 17px; color: var(--ink)"
+			>
+				Final Rankings
+			</h2>
 		</div>
-		<div class="p-6">
-			<div class="space-y-4">
-				{#each data.game.teams as team, index}
-					{@const students = studentsPerTeam(team.id)}
-					<div
-						class="p-6 rounded-xl border-2 transition-all"
-						style={`border-color: ${team.color}40; background-color: ${team.color}15`}
-					>
-						<div class="flex items-center justify-between mb-4">
-							<div class="flex items-center gap-4">
-								<!-- Rank Badge -->
-								<div
-									class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-xl"
-									style={`background-color: ${team.color}`}
-								>
-									{#if index === 0}
-										🥇
-									{:else if index === 1}
-										🥈
-									{:else if index === 2}
-										🥉
-									{:else}
-										#{index + 1}
-									{/if}
-								</div>
-
-								<!-- Team Info -->
-								<div>
-									<h3 class="text-2xl font-bold text-white">
-										{team.name}
-									</h3>
-									<p class="text-white/50">
-										{students.length} student{students.length === 1 ? '' : 's'}
-									</p>
-								</div>
+		<div class="flex flex-col" style="padding: 12px 16px; gap: 8px">
+			{#each sortedTeams as team, i}
+				{@const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+				{@const students = studentsForTeam(team.id)}
+				<div
+					style="padding: 16px 18px; border-radius: 10px; border: 1.5px solid {team.color}30; background: {team.color}08"
+				>
+					<div class="flex items-center justify-between" style="margin-bottom: 10px">
+						<div class="flex items-center" style="gap: 12px">
+							<div
+								class="flex items-center justify-center shrink-0 text-white"
+								style="width: 44px; height: 44px; border-radius: 50%; background: {team.color}; font-size: 20px"
+							>
+								{medal}
 							</div>
-
-							<!-- Score -->
-							<div class="text-right">
-								<p class="text-4xl font-bold text-white">
-									${team.score}
+							<div>
+								<p
+									class="font-serif-display"
+									style="font-size: 18px; color: var(--ink); line-height: 1.1"
+								>
+									{team.name}
 								</p>
-								<p class="text-white/50 text-sm">Final Score</p>
+								<span
+									class="font-semibold uppercase"
+									style="font-size: 10px; letter-spacing: 0.12em; color: var(--muted)"
+								>
+									{students.length} student{students.length === 1 ? '' : 's'}
+								</span>
 							</div>
 						</div>
-
-						<!-- Student List -->
-						{#if students.length > 0}
-							<div class="mt-4 pt-4 border-t border-white/10">
-								<p class="text-sm font-medium text-white/50 mb-2">Team Members:</p>
-								<div class="flex flex-wrap gap-2">
-									{#each students as student}
-										<span
-											class="px-3 py-1 rounded-full text-sm font-medium bg-white/10 text-white/70"
-										>
-											{student.name}
-										</span>
-									{/each}
-								</div>
-							</div>
-						{/if}
+						<div
+							class="font-serif-display mono-nums"
+							style="font-size: 30px; color: var(--ink); line-height: 1"
+						>
+							${team.score.toLocaleString()}
+						</div>
 					</div>
-				{/each}
-			</div>
+					{#if students.length > 0}
+						<div
+							class="flex flex-wrap"
+							style="padding-top: 10px; border-top: 1px solid {team.color}20; gap: 5px"
+						>
+							{#each students as student}
+								<span
+									class="font-medium"
+									style="padding: 3px 10px; border-radius: 99px; font-size: 11px; background: {team.color}15; color: var(--ink-3)"
+								>
+									{student.name}
+								</span>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/each}
 		</div>
 	</div>
 
 	<!-- Actions -->
-	<div class="flex gap-4">
+	<div class="flex" style="gap: 8px">
 		<a
 			href="/dashboard/games"
-			class="px-6 py-3 bg-white/10 text-white/70 border border-white/10 rounded-xl hover:bg-white/15 transition-colors font-medium text-center"
+			class="font-semibold rounded-lg transition-colors"
+			style="padding: 7px 16px; font-size: 13px; border: 1px solid var(--rule); color: var(--ink-3); background: transparent"
 		>
-			Back to Games
+			← Back to Games
 		</a>
 		<a
 			href="/dashboard/games/{data.game.id}/play"
-			class="px-6 py-3 bg-[#d4a817] text-[#0c1a38] rounded-xl hover:opacity-90 transition-colors font-bold"
+			class="font-semibold rounded-lg transition-colors hover:brightness-110"
+			style="padding: 7px 16px; font-size: 13px; background: var(--accent); color: #fff"
 		>
-			View Game Board
+			View Board
 		</a>
 	</div>
 </div>

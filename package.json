@@ -1,5 +1,5 @@
 {
-	"name": "classroom-jeopardy",
+	"name": "tile-trivia",
 	"version": "0.0.1",
 	"private": true,
 	"scripts": {
@@ -13,7 +13,7 @@
 		"db:migrate:prod": "wrangler d1 migrations apply jeopardy-db --remote",
 		"cf:dev": "wrangler pages dev",
 		"cf:deploy:do": "wrangler deploy --config wrangler.worker.json",
-		"cf:deploy:pages": "npm run build && wrangler pages deploy",
+		"cf:deploy:pages": "npm run build && wrangler pages deploy --project-name=tile-trivia",
 		"cf:deploy": "npm run cf:deploy:do && npm run cf:deploy:pages",
 		"lint": "eslint . && prettier --check .",
 		"lint:fix": "eslint . --fix && prettier --write ."
