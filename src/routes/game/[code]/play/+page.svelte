@@ -373,11 +373,14 @@
 							class="absolute inset-0 rounded-full border-2 border-gray-200 animate-spin"
 							style="border-top-color: {myTeam?.color ?? '#0f766e'}"
 						></div>
-						<span class="text-3xl">🎯</span>
+						<svg class="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke={myTeam?.color ?? '#0f766e'} stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+							<circle cx="12" cy="17.5" r=".5" fill={myTeam?.color ?? '#0f766e'}/>
+						</svg>
 					</div>
 					<div>
 						<h2 class="font-serif-display text-3xl text-gray-900">Get ready!</h2>
-						<p class="text-gray-400 text-sm mt-1">The instructor is picking a question</p>
+						<p class="text-gray-400 text-sm mt-1">Waiting on next clue</p>
 					</div>
 					{#if myTeam}
 						<div

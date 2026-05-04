@@ -115,6 +115,15 @@
 	let answeredCount = $derived(answeredSlots.length);
 	let totalQuestions = 30;
 
+	// Flat student list, sorted by name, color-coded by team
+	let allStudents = $derived(
+		teams
+			.flatMap((t: any) =>
+				t.students.map((s: any) => ({ ...s, teamColor: t.color, teamName: t.name }))
+			)
+			.sort((a: any, b: any) => a.name.localeCompare(b.name))
+	);
+
 	function connect() {
 		if (ws) {
 			ws.onclose = null;
@@ -279,46 +288,27 @@
 		</div>
 	</div>
 
-	<!-- Team strip -->
+	<!-- Team scores strip (top) -->
 	<div class="shrink-0 px-5 py-3 border-b border-gray-100 bg-white">
-		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-			{#each teams as team}
-				<div class="p-2.5 rounded-2xl border bg-white" style={`border-color: ${team.color}40`}>
-					<!-- Team name + score -->
-					<div class="flex items-center justify-between mb-1.5">
-						<div class="flex items-center gap-1.5 min-w-0">
-							<div
-								class="w-2 h-2 rounded-full shrink-0"
-								style={`background-color: ${team.color}`}
-							></div>
-							<span class="text-gray-700 text-xs font-semibold truncate">{team.name}</span>
-						</div>
-						<span class="text-xs font-black shrink-0 ml-1" style={`color: ${team.color}`}>
-							${team.score}
-						</span>
-					</div>
-					<!-- Student list -->
-					<div class="flex flex-col gap-0.5">
-						{#each team.students as student}
-							<div class="flex items-center gap-1.5">
-								<div
-									class={`w-1.5 h-1.5 rounded-full shrink-0 ${connectedStudents.has(student.id) ? 'bg-green-400' : 'bg-gray-200'}`}
-								></div>
-								<span
-									class={`text-xs truncate ${connectedStudents.has(student.id) ? 'text-gray-600' : 'text-gray-300'}`}
-									>{student.name}</span
-								>
-							</div>
-						{/each}
-						{#if team.students.length === 0}
-							<p class="text-gray-300 text-xs italic">No students</p>
-						{/if}
-					</div>
+		<div class="flex flex-wrap gap-2">
+			{#each [...teams].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)) as team, i}
+				<div
+					class="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-white"
+					style={`border-color: ${team.color}40`}
+				>
+					<span class="text-[11px] mono-nums" style="color: var(--faint)">#{i + 1}</span>
+					<div class="w-2 h-2 rounded-full shrink-0" style={`background-color: ${team.color}`}></div>
+					<span class="text-xs font-semibold text-gray-700">{team.name}</span>
+					<span class="font-serif-display text-base" style={`color: ${team.color}`}>
+						${team.score}
+					</span>
 				</div>
 			{/each}
 		</div>
 	</div>
 
+	<!-- Body: board on left, students sidebar on right -->
+	<div class="flex-1 flex min-h-0">
 	<!-- Board area -->
 	<div class="flex-1 px-5 pb-5 flex flex-col min-h-0 pt-3">
 		<div class="flex-1 rounded-2xl overflow-hidden flex flex-col bg-[#0a1628] min-h-0">
@@ -370,6 +360,46 @@
 				{/each}
 			</div>
 		</div>
+	</div>
+
+	<!-- Students sidebar (right) -->
+	<aside class="shrink-0 w-64 border-l border-gray-100 bg-white flex flex-col min-h-0">
+		<div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
+			<span
+				class="text-[10px] font-semibold uppercase"
+				style="letter-spacing: 0.14em; color: var(--muted)"
+			>
+				Students
+			</span>
+			<span class="text-[11px]" style="color: var(--faint)">
+				{connectedStudents.size}/{allStudents.length} online
+			</span>
+		</div>
+		<div class="flex-1 overflow-y-auto py-2">
+			{#if allStudents.length === 0}
+				<p class="text-xs italic px-4 py-2" style="color: var(--faint)">No students yet</p>
+			{:else}
+				{#each allStudents as student}
+					{@const online = connectedStudents.has(student.id)}
+					<div
+						class="flex items-center gap-2 px-4 py-1.5 hover:bg-gray-50"
+						title={student.teamName}
+					>
+						<div
+							class="w-2 h-2 rounded-full shrink-0"
+							style={`background-color: ${student.teamColor}; opacity: ${online ? 1 : 0.3}`}
+						></div>
+						<span
+							class="text-sm truncate"
+							style={`color: ${online ? student.teamColor : 'var(--faint)'}; font-weight: ${online ? 600 : 400}`}
+						>
+							{student.name}
+						</span>
+					</div>
+				{/each}
+			{/if}
+		</div>
+	</aside>
 	</div>
 </div>
 
