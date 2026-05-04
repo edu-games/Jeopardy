@@ -9,10 +9,13 @@ export const load: PageServerLoad = async ({ locals, params, platform }) => {
 	const db = getDb(platform!.env.DB);
 	const [question, allTags] = await Promise.all([
 		db.query.questions.findFirst({
-			where: and(eq(schema.questions.id, params.id), eq(schema.questions.instructorId, locals.instructor!.id)),
-			with: { tags: { with: { tag: true } } },
+			where: and(
+				eq(schema.questions.id, params.id),
+				eq(schema.questions.instructorId, locals.instructor!.id)
+			),
+			with: { tags: { with: { tag: true } } }
 		}),
-		db.query.tags.findMany({ orderBy: [asc(schema.tags.name)] }),
+		db.query.tags.findMany({ orderBy: [asc(schema.tags.name)] })
 	]);
 
 	if (!question) throw error(404, 'Question not found');
@@ -23,27 +26,38 @@ export const load: PageServerLoad = async ({ locals, params, platform }) => {
 export const actions = {
 	default: async ({ locals, params, request, platform }) => {
 		const data = await request.formData();
-		const answer = data.get('answer');
-		const question = data.get('question');
+		const clue = data.get('clue');
+		const response = data.get('response');
 		const tagInput = data.get('tags');
 		const newTags = data.get('newTags');
 
-		if (!answer || typeof answer !== 'string' || answer.trim().length === 0) {
-			return fail(400, { error: 'Answer is required', answer: '', question: question?.toString() || '' });
+		if (!clue || typeof clue !== 'string' || clue.trim().length === 0) {
+			return fail(400, {
+				error: 'Clue is required',
+				clue: '',
+				response: response?.toString() || ''
+			});
 		}
-		if (!question || typeof question !== 'string' || question.trim().length === 0) {
-			return fail(400, { error: 'Question is required', answer, question: '' });
+		if (!response || typeof response !== 'string' || response.trim().length === 0) {
+			return fail(400, { error: 'Response is required', clue, response: '' });
 		}
 
 		const db = getDb(platform!.env.DB);
 		const existing = await db.query.questions.findFirst({
-			where: and(eq(schema.questions.id, params.id), eq(schema.questions.instructorId, locals.instructor!.id)),
+			where: and(
+				eq(schema.questions.id, params.id),
+				eq(schema.questions.instructorId, locals.instructor!.id)
+			)
 		});
 		if (!existing) throw error(404, 'Question not found');
 
 		const selectedTagIds = tagInput ? tagInput.toString().split(',').filter(Boolean) : [];
 		const newTagNames = newTags
-			? newTags.toString().split(',').map((t) => t.trim()).filter(Boolean)
+			? newTags
+					.toString()
+					.split(',')
+					.map((t) => t.trim())
+					.filter(Boolean)
 			: [];
 
 		const createdTagIds: string[] = [];
@@ -56,13 +70,17 @@ export const actions = {
 		const allTagIds = [...selectedTagIds, ...createdTagIds];
 		const now = new Date().toISOString();
 
-		await db.update(schema.questions)
-			.set({ answer: answer.trim(), question: question.trim(), updatedAt: now })
+		await db
+			.update(schema.questions)
+			.set({ clue: clue.trim(), response: response.trim(), updatedAt: now })
 			.where(eq(schema.questions.id, params.id));
 
 		await db.delete(schema.questionTags).where(eq(schema.questionTags.questionId, params.id));
 		for (const tagId of allTagIds) {
-			await db.insert(schema.questionTags).values({ questionId: params.id, tagId }).onConflictDoNothing();
+			await db
+				.insert(schema.questionTags)
+				.values({ questionId: params.id, tagId })
+				.onConflictDoNothing();
 		}
 
 		throw redirect(303, '/dashboard/questions');

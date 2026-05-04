@@ -53,7 +53,9 @@ export const actions = {
 		const id = createId();
 		const now = new Date().toISOString();
 
-		await db.insert(instructors).values({ id, name, email, password: hashedPassword, createdAt: now, updatedAt: now });
+		await db
+			.insert(instructors)
+			.values({ id, name, email, password: hashedPassword, createdAt: now, updatedAt: now });
 
 		await createSession(id, cookies, db);
 

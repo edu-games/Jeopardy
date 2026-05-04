@@ -72,33 +72,33 @@ instructors ──┬── questions ──── question_tags ──── ta
                           └── game_state
 ```
 
-| Table | Purpose |
-|---|---|
-| `instructors` | Authenticated teacher accounts |
-| `sessions` | Instructor login sessions |
-| `questions` | Question bank (clue shown + correct response) |
-| `tags` | Labels for filtering questions |
-| `boards` | A named set of categories and questions |
-| `categories` | Column headers on a board (up to 6) |
+| Table                  | Purpose                                                       |
+| ---------------------- | ------------------------------------------------------------- |
+| `instructors`          | Authenticated teacher accounts                                |
+| `sessions`             | Instructor login sessions                                     |
+| `questions`            | Question bank (clue shown + correct response)                 |
+| `tags`                 | Labels for filtering questions                                |
+| `boards`               | A named set of categories and questions                       |
+| `categories`           | Column headers on a board (up to 6)                           |
 | `board_question_slots` | Each cell: category + question + points + row/column position |
-| `games` | A running or completed game instance with a join code |
-| `teams` | Teams within a game, with scores |
-| `students` | Players who joined a game |
-| `game_state` | Live state: current question, answered slots, buzzer status |
+| `games`                | A running or completed game instance with a join code         |
+| `teams`                | Teams within a game, with scores                              |
+| `students`             | Players who joined a game                                     |
+| `game_state`           | Live state: current question, answered slots, buzzer status   |
 
 ### WebSocket Message Protocol
 
 All messages are JSON. Clients send to the GameHub DO:
 
-| Message | Sent by | Description |
-|---|---|---|
-| `start-game` | instructor | Transitions game `LOBBY` → `IN_PROGRESS` |
-| `end-game` | instructor | Transitions game to `COMPLETED`, broadcasts final scores |
-| `reveal-question` | instructor | Opens a question slot, broadcasts clue to all clients |
-| `answer` | instructor | Marks answer correct/incorrect, updates team score |
-| `enable-buzzer` | instructor | Re-opens the buzzer for the next student to buzz in |
-| `assign-team` | instructor | Assigns a student to a team |
-| `buzzer` | student | First buzz-in; disables buzzer for others, broadcasts winner |
+| Message           | Sent by    | Description                                                  |
+| ----------------- | ---------- | ------------------------------------------------------------ |
+| `start-game`      | instructor | Transitions game `LOBBY` → `IN_PROGRESS`                     |
+| `end-game`        | instructor | Transitions game to `COMPLETED`, broadcasts final scores     |
+| `reveal-question` | instructor | Opens a question slot, broadcasts clue to all clients        |
+| `answer`          | instructor | Marks answer correct/incorrect, updates team score           |
+| `enable-buzzer`   | instructor | Re-opens the buzzer for the next student to buzz in          |
+| `assign-team`     | instructor | Assigns a student to a team                                  |
+| `buzzer`          | student    | First buzz-in; disables buzzer for others, broadcasts winner |
 
 The DO broadcasts events back to all connected clients (`game-started`, `question-revealed`, `buzzer-pressed`, `answer-submitted`, `team-assigned`, etc.).
 

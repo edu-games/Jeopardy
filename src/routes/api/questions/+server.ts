@@ -1,17 +1,16 @@
-import { json, error } from "@sveltejs/kit";
-import type { RequestHandler } from "./";
-import { getDb } from "$lib/server/db";
-import { questions, questionTags } from "$lib/server/schema";
-import { like, or, and } from "drizzle-orm";
-import { createId } from "@paralleldrive/cuid2";
+import { json, error } from '@sveltejs/kit';
+import type { RequestHandler } from './';
+import { getDb } from '$lib/server/db';
+import { questions, questionTags } from '$lib/server/schema';
+import { createId } from '@paralleldrive/cuid2';
 
 export const GET: RequestHandler = async ({ locals, url, platform }) => {
-	if (!locals.instructor) throw error(401, "Unauthorized");
+	if (!locals.instructor) throw error(401, 'Unauthorized');
 
-	const search = url.searchParams.get("search") || "";
-	const tagIds = url.searchParams.getAll("tagId");
-	const limit = parseInt(url.searchParams.get("limit") || "50");
-	const offset = parseInt(url.searchParams.get("offset") || "0");
+	const search = url.searchParams.get('search') || '';
+	const tagIds = url.searchParams.getAll('tagId');
+	const limit = parseInt(url.searchParams.get('limit') || '50');
+	const offset = parseInt(url.searchParams.get('offset') || '0');
 
 	const db = getDb(platform!.env.DB);
 
@@ -19,7 +18,7 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
 		where: (q, { eq, and, or, like }) => {
 			const conditions = [eq(q.instructorId, locals.instructor!.id)];
 			if (search) {
-				conditions.push(or(like(q.answer, `%${search}%`), like(q.question, `%${search}%`))!);
+				conditions.push(or(like(q.clue, `%${search}%`), like(q.response, `%${search}%`))!);
 			}
 			return and(...conditions);
 		},
@@ -38,18 +37,18 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
 };
 
 export const POST: RequestHandler = async ({ locals, request, platform }) => {
-	if (!locals.instructor) throw error(401, "Unauthorized");
+	if (!locals.instructor) throw error(401, 'Unauthorized');
 
 	const data = await request.json();
-	const { answer, question, tagIds = [] } = data;
+	const { clue, response, tagIds = [] } = data;
 
-	if (!answer || typeof answer !== "string" || answer.trim().length === 0) {
-		throw error(400, "Answer is required");
+	if (!clue || typeof clue !== 'string' || clue.trim().length === 0) {
+		throw error(400, 'Clue is required');
 	}
-	if (!question || typeof question !== "string" || question.trim().length === 0) {
-		throw error(400, "Question is required");
+	if (!response || typeof response !== 'string' || response.trim().length === 0) {
+		throw error(400, 'Response is required');
 	}
-	if (!Array.isArray(tagIds)) throw error(400, "Tag IDs must be an array");
+	if (!Array.isArray(tagIds)) throw error(400, 'Tag IDs must be an array');
 
 	const db = getDb(platform!.env.DB);
 	const id = createId();
@@ -57,15 +56,17 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 
 	await db.insert(questions).values({
 		id,
-		answer: answer.trim(),
-		question: question.trim(),
+		clue: clue.trim(),
+		response: response.trim(),
 		instructorId: locals.instructor.id,
 		createdAt: now,
 		updatedAt: now
 	});
 
 	if (tagIds.length > 0) {
-		await db.insert(questionTags).values(tagIds.map((tagId: string) => ({ questionId: id, tagId })));
+		await db
+			.insert(questionTags)
+			.values(tagIds.map((tagId: string) => ({ questionId: id, tagId })));
 	}
 
 	const newQuestion = await db.query.questions.findFirst({

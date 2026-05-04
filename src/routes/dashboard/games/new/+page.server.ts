@@ -1,7 +1,7 @@
-import { getDb } from "$lib/server/db";
-import * as schema from "$lib/server/schema";
-import { eq, desc } from "drizzle-orm";
-import type { PageServerLoad } from "./";
+import { getDb } from '$lib/server/db';
+import * as schema from '$lib/server/schema';
+import { eq, desc } from 'drizzle-orm';
+import type { PageServerLoad } from './';
 
 export const load: PageServerLoad = async ({ locals, platform }) => {
 	const db = getDb(platform!.env.DB);
@@ -9,10 +9,10 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		where: eq(schema.boards.instructorId, locals.instructor!.id),
 		with: {
 			categories: {
-				with: { slots: true },
-			},
+				with: { slots: true }
+			}
 		},
-		orderBy: [desc(schema.boards.createdAt)],
+		orderBy: [desc(schema.boards.createdAt)]
 	});
 
 	const completeBoards = boards.filter((board) => {

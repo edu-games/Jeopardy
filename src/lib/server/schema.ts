@@ -8,8 +8,12 @@ export const instructors = sqliteTable('instructors', {
 	email: text('email').notNull().unique(),
 	password: text('password').notNull(),
 	name: text('name').notNull(),
-	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-	updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`(datetime('now'))`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`(datetime('now'))`)
 });
 
 export const instructorsRelations = relations(instructors, ({ many }) => ({
@@ -27,8 +31,12 @@ export const sessions = sqliteTable('sessions', {
 		.notNull()
 		.references(() => instructors.id, { onDelete: 'cascade' }),
 	expiresAt: text('expires_at').notNull(),
-	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-	updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`(datetime('now'))`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`(datetime('now'))`)
 });
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -42,13 +50,17 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
 
 export const questions = sqliteTable('questions', {
 	id: text('id').primaryKey(),
-	answer: text('answer').notNull(), // The clue shown to players
-	question: text('question').notNull(), // The correct response
+	clue: text('clue').notNull(),
+	response: text('response').notNull(),
 	instructorId: text('instructor_id')
 		.notNull()
 		.references(() => instructors.id, { onDelete: 'cascade' }),
-	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-	updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`(datetime('now'))`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`(datetime('now'))`)
 });
 
 export const questionsRelations = relations(questions, ({ one, many }) => ({
@@ -65,7 +77,9 @@ export const questionsRelations = relations(questions, ({ one, many }) => ({
 export const tags = sqliteTable('tags', {
 	id: text('id').primaryKey(),
 	name: text('name').notNull().unique(),
-	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`(datetime('now'))`)
 });
 
 export const tagsRelations = relations(tags, ({ many }) => ({
@@ -107,8 +121,12 @@ export const boards = sqliteTable('boards', {
 	instructorId: text('instructor_id')
 		.notNull()
 		.references(() => instructors.id, { onDelete: 'cascade' }),
-	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-	updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`(datetime('now'))`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`(datetime('now'))`)
 });
 
 export const boardsRelations = relations(boards, ({ one, many }) => ({
@@ -129,8 +147,12 @@ export const categories = sqliteTable('categories', {
 	boardId: text('board_id')
 		.notNull()
 		.references(() => boards.id, { onDelete: 'cascade' }),
-	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-	updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`(datetime('now'))`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`(datetime('now'))`)
 });
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
@@ -156,9 +178,13 @@ export const boardQuestionSlots = sqliteTable(
 		row: integer('row').notNull(), // 0-4
 		column: integer('column').notNull(), // 0-5
 		points: integer('points').notNull(),
-		isDailyDouble: integer('is_daily_double', { mode: 'boolean' }).notNull().default(false),
-		createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-		updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`)
+		isWildCard: integer('is_wild_card', { mode: 'boolean' }).notNull().default(false),
+		createdAt: text('created_at')
+			.notNull()
+			.default(sql`(datetime('now'))`),
+		updatedAt: text('updated_at')
+			.notNull()
+			.default(sql`(datetime('now'))`)
 	},
 	(t) => [unique().on(t.categoryId, t.row)]
 );
@@ -189,8 +215,12 @@ export const games = sqliteTable('games', {
 	status: text('status').notNull().default('LOBBY'),
 	// 'MANUAL' | 'RANDOM'
 	teamAssignment: text('team_assignment').notNull().default('RANDOM'),
-	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-	updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`(datetime('now'))`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`(datetime('now'))`)
 });
 
 export const gamesRelations = relations(games, ({ one, many }) => ({
@@ -217,8 +247,12 @@ export const teams = sqliteTable('teams', {
 	gameId: text('game_id')
 		.notNull()
 		.references(() => games.id, { onDelete: 'cascade' }),
-	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-	updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`(datetime('now'))`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`(datetime('now'))`)
 });
 
 export const teamsRelations = relations(teams, ({ one, many }) => ({
@@ -239,8 +273,12 @@ export const students = sqliteTable('students', {
 		.references(() => games.id, { onDelete: 'cascade' }),
 	teamId: text('team_id').references(() => teams.id),
 	buzzerAt: text('buzzer_at'), // ISO 8601 string or null
-	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-	updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`(datetime('now'))`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`(datetime('now'))`)
 });
 
 export const studentsRelations = relations(students, ({ one }) => ({
@@ -269,8 +307,12 @@ export const gameState = sqliteTable('game_state', {
 	questionStartedAt: text('question_started_at'), // ISO 8601 string or null
 	buzzerEnabled: integer('buzzer_enabled', { mode: 'boolean' }).notNull().default(false),
 	currentWager: integer('current_wager'),
-	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-	updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`)
+	createdAt: text('created_at')
+		.notNull()
+		.default(sql`(datetime('now'))`),
+	updatedAt: text('updated_at')
+		.notNull()
+		.default(sql`(datetime('now'))`)
 });
 
 export const gameStateRelations = relations(gameState, ({ one }) => ({

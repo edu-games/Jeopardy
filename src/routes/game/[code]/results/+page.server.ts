@@ -17,10 +17,10 @@ export const load: PageServerLoad = async ({ params, url, platform }) => {
 			board: true,
 			teams: {
 				with: { students: true },
-				orderBy: [desc(schema.teams.score)],
+				orderBy: [desc(schema.teams.score)]
 			},
-			gameState: true,
-		},
+			gameState: true
+		}
 	});
 
 	if (!game) throw error(404, 'Game not found');
@@ -28,7 +28,7 @@ export const load: PageServerLoad = async ({ params, url, platform }) => {
 
 	const student = await db.query.students.findFirst({
 		where: and(eq(schema.students.id, studentId), eq(schema.students.gameId, game.id)),
-		with: { team: true },
+		with: { team: true }
 	});
 
 	if (!student) throw error(404, 'Student not found in this game');

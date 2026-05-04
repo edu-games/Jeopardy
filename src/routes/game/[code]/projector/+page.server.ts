@@ -15,15 +15,15 @@ export const load: PageServerLoad = async ({ params, url, platform }) => {
 						with: {
 							slots: {
 								with: { question: true },
-								orderBy: [asc(schema.boardQuestionSlots.row)],
-							},
+								orderBy: [asc(schema.boardQuestionSlots.row)]
+							}
 						},
-						orderBy: [asc(schema.categories.order)],
-					},
-				},
+						orderBy: [asc(schema.categories.order)]
+					}
+				}
 			},
-			gameState: true,
-		},
+			gameState: true
+		}
 	});
 
 	if (!game) throw error(404, 'Game not found');

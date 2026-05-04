@@ -1,9 +1,9 @@
-import { json, error } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
-import { getDb } from "$lib/server/db";
+import { json, error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { getDb } from '$lib/server/db';
 
 export const GET: RequestHandler = async ({ locals, platform }) => {
-	if (!locals.instructor) throw error(401, "Unauthorized");
+	if (!locals.instructor) throw error(401, 'Unauthorized');
 
 	const db = getDb(platform!.env.DB);
 
@@ -14,13 +14,13 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 	});
 
 	const exportData = questions.map((q) => ({
-		answer: q.answer,
-		question: q.question,
+		clue: q.clue,
+		response: q.response,
 		tags: q.tags.map((t) => t.tag.name)
 	}));
 
 	return json({
-		version: "1.0",
+		version: '1.0',
 		exportedAt: new Date().toISOString(),
 		instructor: locals.instructor!.email,
 		count: exportData.length,

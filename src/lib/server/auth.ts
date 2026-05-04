@@ -2,7 +2,7 @@ import bcryptjs from 'bcryptjs';
 import type { Cookies } from '@sveltejs/kit';
 import { eq, lt } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
-import { getDb, type DB } from './db';
+import { type DB } from './db';
 import { sessions, instructors } from './schema';
 
 const SESSION_COOKIE_NAME = 'session';
@@ -85,7 +85,10 @@ export async function getInstructorFromSession(cookies: Cookies, db: DB) {
 export async function deleteSession(cookies: Cookies, db: DB): Promise<void> {
 	const sessionId = cookies.get(SESSION_COOKIE_NAME);
 	if (sessionId) {
-		await db.delete(sessions).where(eq(sessions.id, sessionId)).catch(() => {});
+		await db
+			.delete(sessions)
+			.where(eq(sessions.id, sessionId))
+			.catch(() => {});
 	}
 	cookies.delete(SESSION_COOKIE_NAME, { path: '/' });
 }

@@ -9,9 +9,9 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		db.query.questions.findMany({
 			where: eq(schema.questions.instructorId, locals.instructor!.id),
 			with: { tags: { with: { tag: true } } },
-			orderBy: [desc(schema.questions.createdAt)],
+			orderBy: [desc(schema.questions.createdAt)]
 		}),
-		db.query.tags.findMany({ orderBy: [asc(schema.tags.name)] }),
+		db.query.tags.findMany({ orderBy: [asc(schema.tags.name)] })
 	]);
 
 	return { questions, tags };

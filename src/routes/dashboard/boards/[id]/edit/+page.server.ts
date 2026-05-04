@@ -8,25 +8,28 @@ export const load: PageServerLoad = async ({ locals, params, platform }) => {
 	const db = getDb(platform!.env.DB);
 	const [board, questions, tags] = await Promise.all([
 		db.query.boards.findFirst({
-			where: and(eq(schema.boards.id, params.id), eq(schema.boards.instructorId, locals.instructor!.id)),
+			where: and(
+				eq(schema.boards.id, params.id),
+				eq(schema.boards.instructorId, locals.instructor!.id)
+			),
 			with: {
 				categories: {
 					with: {
 						slots: {
 							with: { question: true },
-							orderBy: [asc(schema.boardQuestionSlots.row)],
-						},
+							orderBy: [asc(schema.boardQuestionSlots.row)]
+						}
 					},
-					orderBy: [asc(schema.categories.order)],
-				},
-			},
+					orderBy: [asc(schema.categories.order)]
+				}
+			}
 		}),
 		db.query.questions.findMany({
 			where: eq(schema.questions.instructorId, locals.instructor!.id),
 			with: { tags: { with: { tag: true } } },
-			orderBy: [desc(schema.questions.createdAt)],
+			orderBy: [desc(schema.questions.createdAt)]
 		}),
-		db.query.tags.findMany({ orderBy: [asc(schema.tags.name)] }),
+		db.query.tags.findMany({ orderBy: [asc(schema.tags.name)] })
 	]);
 
 	if (!board) throw error(404, 'Board not found');

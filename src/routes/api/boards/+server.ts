@@ -1,12 +1,11 @@
-import { json, error } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
-import { getDb } from "$lib/server/db";
-import { boards, categories, boardQuestionSlots } from "$lib/server/schema";
-import { eq } from "drizzle-orm";
-import { createId } from "@paralleldrive/cuid2";
+import { json, error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { getDb } from '$lib/server/db';
+import { boards, categories, boardQuestionSlots } from '$lib/server/schema';
+import { createId } from '@paralleldrive/cuid2';
 
 export const GET: RequestHandler = async ({ locals, platform }) => {
-	if (!locals.instructor) throw error(401, "Unauthorized");
+	if (!locals.instructor) throw error(401, 'Unauthorized');
 
 	const db = getDb(platform!.env.DB);
 
@@ -25,30 +24,31 @@ export const GET: RequestHandler = async ({ locals, platform }) => {
 };
 
 export const POST: RequestHandler = async ({ locals, request, platform }) => {
-	if (!locals.instructor) throw error(401, "Unauthorized");
+	if (!locals.instructor) throw error(401, 'Unauthorized');
 
 	const data = await request.json();
 	const { name, description, categories: cats } = data;
 
-	if (!name || typeof name !== "string" || name.trim().length === 0) {
-		throw error(400, "Board name is required");
+	if (!name || typeof name !== 'string' || name.trim().length === 0) {
+		throw error(400, 'Board name is required');
 	}
 	if (!cats || !Array.isArray(cats) || cats.length !== 6) {
-		throw error(400, "Board must have exactly 6 categories");
+		throw error(400, 'Board must have exactly 6 categories');
 	}
 
 	for (let i = 0; i < cats.length; i++) {
 		const cat = cats[i];
-		if (!cat.name || typeof cat.name !== "string") throw error(400, `Category ${i + 1} must have a name`);
+		if (!cat.name || typeof cat.name !== 'string')
+			throw error(400, `Category ${i + 1} must have a name`);
 		if (!cat.slots || !Array.isArray(cat.slots) || cat.slots.length !== 5) {
 			throw error(400, `Category ${i + 1} must have exactly 5 question slots`);
 		}
 		for (let j = 0; j < cat.slots.length; j++) {
 			const slot = cat.slots[j];
-			if (!slot.questionId || typeof slot.questionId !== "string") {
+			if (!slot.questionId || typeof slot.questionId !== 'string') {
 				throw error(400, `Category ${i + 1}, slot ${j + 1} must have a question ID`);
 			}
-			if (typeof slot.points !== "number" || slot.points <= 0) {
+			if (typeof slot.points !== 'number' || slot.points <= 0) {
 				throw error(400, `Category ${i + 1}, slot ${j + 1} must have valid points`);
 			}
 		}
@@ -71,18 +71,19 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 	);
 
 	const slotInserts = cats.flatMap((cat, i) =>
-		cat.slots.map((slot: { questionId: string; points: number; isDailyDouble?: boolean }, j: number) =>
-			db.insert(boardQuestionSlots).values({
-				id: createId(),
-				categoryId: catIds[i],
-				questionId: slot.questionId,
-				row: j,
-				column: i,
-				points: slot.points,
-				isDailyDouble: slot.isDailyDouble || false,
-				createdAt: now,
-				updatedAt: now
-			})
+		cat.slots.map(
+			(slot: { questionId: string; points: number; isWildCard?: boolean }, j: number) =>
+				db.insert(boardQuestionSlots).values({
+					id: createId(),
+					categoryId: catIds[i],
+					questionId: slot.questionId,
+					row: j,
+					column: i,
+					points: slot.points,
+					isWildCard: slot.isWildCard || false,
+					createdAt: now,
+					updatedAt: now
+				})
 		)
 	);
 

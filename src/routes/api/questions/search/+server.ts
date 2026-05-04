@@ -1,13 +1,12 @@
-import { json, error } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
-import { getDb } from "$lib/server/db";
-import { like, or, and } from "drizzle-orm";
+import { json, error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { getDb } from '$lib/server/db';
 
 export const GET: RequestHandler = async ({ locals, url, platform }) => {
-	if (!locals.instructor) throw error(401, "Unauthorized");
+	if (!locals.instructor) throw error(401, 'Unauthorized');
 
-	const tagNames = url.searchParams.getAll("tag");
-	const searchTerm = url.searchParams.get("q") || "";
+	const tagNames = url.searchParams.getAll('tag');
+	const searchTerm = url.searchParams.get('q') || '';
 
 	const db = getDb(platform!.env.DB);
 
@@ -15,7 +14,9 @@ export const GET: RequestHandler = async ({ locals, url, platform }) => {
 		where: (q, { eq, and, or, like }) => {
 			const conditions = [eq(q.instructorId, locals.instructor!.id)];
 			if (searchTerm) {
-				conditions.push(or(like(q.answer, `%${searchTerm}%`), like(q.question, `%${searchTerm}%`))!);
+				conditions.push(
+					or(like(q.clue, `%${searchTerm}%`), like(q.response, `%${searchTerm}%`))!
+				);
 			}
 			return and(...conditions);
 		},

@@ -16,22 +16,22 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 						with: {
 							slots: {
 								with: { question: true },
-								orderBy: [asc(schema.boardQuestionSlots.row)],
-							},
+								orderBy: [asc(schema.boardQuestionSlots.row)]
+							}
 						},
-						orderBy: [asc(schema.categories.order)],
-					},
-				},
+						orderBy: [asc(schema.categories.order)]
+					}
+				}
 			},
 			teams: {
 				with: { students: true },
-				orderBy: [asc(schema.teams.createdAt)],
+				orderBy: [asc(schema.teams.createdAt)]
 			},
 			students: {
-				orderBy: [asc(schema.students.createdAt)],
+				orderBy: [asc(schema.students.createdAt)]
 			},
-			gameState: true,
-		},
+			gameState: true
+		}
 	});
 
 	if (!game) throw error(404, 'Game not found');

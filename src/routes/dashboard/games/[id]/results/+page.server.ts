@@ -7,18 +7,21 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals, params, platform }) => {
 	const db = getDb(platform!.env.DB);
 	const game = await db.query.games.findFirst({
-		where: and(eq(schema.games.id, params.id), eq(schema.games.instructorId, locals.instructor!.id)),
+		where: and(
+			eq(schema.games.id, params.id),
+			eq(schema.games.instructorId, locals.instructor!.id)
+		),
 		with: {
 			board: true,
 			teams: {
 				with: { students: true },
-				orderBy: [desc(schema.teams.score)],
+				orderBy: [desc(schema.teams.score)]
 			},
 			students: {
-				with: { team: true },
+				with: { team: true }
 			},
-			gameState: true,
-		},
+			gameState: true
+		}
 	});
 
 	if (!game) throw error(404, 'Game not found');

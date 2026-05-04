@@ -1,28 +1,30 @@
-import { json, error } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
-import { getDb } from "$lib/server/db";
-import { tags, questions, questionTags } from "$lib/server/schema";
-import { eq } from "drizzle-orm";
-import { createId } from "@paralleldrive/cuid2";
+import { json, error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { getDb } from '$lib/server/db';
+import { tags, questions, questionTags } from '$lib/server/schema';
+import { eq } from 'drizzle-orm';
+import { createId } from '@paralleldrive/cuid2';
 
 interface ImportQuestion {
-	answer: string;
-	question: string;
+	clue: string;
+	response: string;
 	tags: string[];
 }
 
 export const POST: RequestHandler = async ({ locals, request, platform }) => {
-	if (!locals.instructor) throw error(401, "Unauthorized");
+	if (!locals.instructor) throw error(401, 'Unauthorized');
 
 	const data = await request.json();
 	const { questions: importedQuestions } = data;
 
-	if (!Array.isArray(importedQuestions)) throw error(400, "Questions must be an array");
+	if (!Array.isArray(importedQuestions)) throw error(400, 'Questions must be an array');
 
 	for (const q of importedQuestions) {
-		if (!q.answer || typeof q.answer !== "string") throw error(400, "Each question must have an answer");
-		if (!q.question || typeof q.question !== "string") throw error(400, "Each question must have a question");
-		if (!Array.isArray(q.tags)) throw error(400, "Each question must have a tags array");
+		if (!q.clue || typeof q.clue !== 'string')
+			throw error(400, 'Each question must have a clue');
+		if (!q.response || typeof q.response !== 'string')
+			throw error(400, 'Each question must have a response');
+		if (!Array.isArray(q.tags)) throw error(400, 'Each question must have a tags array');
 	}
 
 	const db = getDb(platform!.env.DB);
@@ -34,7 +36,10 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 	// Upsert tags
 	const tagMap = new Map<string, string>();
 	for (const tagName of allTagNames) {
-		await db.insert(tags).values({ id: createId(), name: tagName, createdAt: new Date().toISOString() }).onConflictDoNothing();
+		await db
+			.insert(tags)
+			.values({ id: createId(), name: tagName, createdAt: new Date().toISOString() })
+			.onConflictDoNothing();
 		const tag = await db.select().from(tags).where(eq(tags.name, tagName)).get();
 		if (tag) tagMap.set(tagName, tag.id);
 	}
@@ -46,16 +51,16 @@ export const POST: RequestHandler = async ({ locals, request, platform }) => {
 		const id = createId();
 		await db.insert(questions).values({
 			id,
-			answer: q.answer.trim(),
-			question: q.question.trim(),
+			clue: q.clue.trim(),
+			response: q.response.trim(),
 			instructorId: locals.instructor!.id,
 			createdAt: now,
 			updatedAt: now
 		});
 		if (q.tags.length > 0) {
-			await db.insert(questionTags).values(
-				q.tags.map((tagName) => ({ questionId: id, tagId: tagMap.get(tagName)! }))
-			);
+			await db
+				.insert(questionTags)
+				.values(q.tags.map((tagName) => ({ questionId: id, tagId: tagMap.get(tagName)! })));
 		}
 		created.push(id);
 	}

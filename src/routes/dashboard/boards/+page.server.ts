@@ -11,17 +11,17 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 			categories: {
 				with: {
 					slots: {
-						orderBy: [asc(schema.boardQuestionSlots.row)],
-					},
+						orderBy: [asc(schema.boardQuestionSlots.row)]
+					}
 				},
-				orderBy: [asc(schema.categories.order)],
+				orderBy: [asc(schema.categories.order)]
 			},
-			games: true,
+			games: true
 		},
-		orderBy: [desc(schema.boards.createdAt)],
+		orderBy: [desc(schema.boards.createdAt)]
 	});
 
 	return {
-		boards: boards.map((b) => ({ ...b, _count: { games: b.games.length } })),
+		boards: boards.map((b) => ({ ...b, _count: { games: b.games.length } }))
 	};
 };

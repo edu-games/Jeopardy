@@ -1,255 +1,255 @@
 {
-  "version": "1.0",
-  "questions": [
-    {
-      "answer": "This planet is known as the Red Planet due to iron oxide on its surface",
-      "question": "What is Mars?",
-      "tags": ["Science", "Space"]
-    },
-    {
-      "answer": "The chemical symbol for gold on the periodic table",
-      "question": "What is Au?",
-      "tags": ["Science", "Chemistry"]
-    },
-    {
-      "answer": "This scientist developed the theory of general relativity",
-      "question": "Who is Albert Einstein?",
-      "tags": ["Science", "Physics"]
-    },
-    {
-      "answer": "The powerhouse of the cell",
-      "question": "What is the mitochondria?",
-      "tags": ["Science", "Biology"]
-    },
-    {
-      "answer": "This gas makes up approximately 78% of Earth's atmosphere",
-      "question": "What is nitrogen?",
-      "tags": ["Science", "Chemistry"]
-    },
-    {
-      "answer": "The speed of light in a vacuum, approximately 299,792 kilometers per second",
-      "question": "What is the speed of light?",
-      "tags": ["Science", "Physics"]
-    },
-    {
-      "answer": "This is the largest organ in the human body",
-      "question": "What is the skin?",
-      "tags": ["Science", "Biology"]
-    },
-    {
-      "answer": "He wrote 'On the Origin of Species' and proposed the theory of evolution by natural selection",
-      "question": "Who is Charles Darwin?",
-      "tags": ["Science", "Biology"]
-    },
-    {
-      "answer": "The number of bones in the adult human body",
-      "question": "What is 206?",
-      "tags": ["Science", "Biology"]
-    },
-    {
-      "answer": "This element has the atomic number 1 and is the lightest on the periodic table",
-      "question": "What is hydrogen?",
-      "tags": ["Science", "Chemistry"]
-    },
-    {
-      "answer": "The 16th President of the United States, who issued the Emancipation Proclamation",
-      "question": "Who is Abraham Lincoln?",
-      "tags": ["History", "American History"]
-    },
-    {
-      "answer": "This ancient wonder was a massive statue located at the entrance of a Greek harbor",
-      "question": "What is the Colossus of Rhodes?",
-      "tags": ["History", "Ancient World"]
-    },
-    {
-      "answer": "The year World War II ended",
-      "question": "What is 1945?",
-      "tags": ["History", "World War II"]
-    },
-    {
-      "answer": "She was the first woman to win a Nobel Prize, winning in both Physics and Chemistry",
-      "question": "Who is Marie Curie?",
-      "tags": ["History", "Science"]
-    },
-    {
-      "answer": "This empire, ruled from Constantinople, was the continuation of the Eastern Roman Empire",
-      "question": "What is the Byzantine Empire?",
-      "tags": ["History", "Ancient World"]
-    },
-    {
-      "answer": "The document signed in 1215 that limited the power of the English king",
-      "question": "What is the Magna Carta?",
-      "tags": ["History", "Government"]
-    },
-    {
-      "answer": "This country was the first to give women the right to vote in 1893",
-      "question": "What is New Zealand?",
-      "tags": ["History", "Geography"]
-    },
-    {
-      "answer": "The ancient Egyptian writing system using pictorial symbols",
-      "question": "What are hieroglyphics?",
-      "tags": ["History", "Ancient World"]
-    },
-    {
-      "answer": "He was the first person to walk on the moon in 1969",
-      "question": "Who is Neil Armstrong?",
-      "tags": ["History", "Space"]
-    },
-    {
-      "answer": "This wall, stretching over 13,000 miles, was built to protect China from northern invasions",
-      "question": "What is the Great Wall of China?",
-      "tags": ["History", "Geography"]
-    },
-    {
-      "answer": "The longest river in the world",
-      "question": "What is the Nile River?",
-      "tags": ["Geography"]
-    },
-    {
-      "answer": "The smallest country in the world by area, located within Rome, Italy",
-      "question": "What is Vatican City?",
-      "tags": ["Geography"]
-    },
-    {
-      "answer": "The capital city of Australia",
-      "question": "What is Canberra?",
-      "tags": ["Geography"]
-    },
-    {
-      "answer": "This mountain range separates Europe from Asia",
-      "question": "What are the Ural Mountains?",
-      "tags": ["Geography"]
-    },
-    {
-      "answer": "The ocean located between Africa and Australia",
-      "question": "What is the Indian Ocean?",
-      "tags": ["Geography"]
-    },
-    {
-      "answer": "He wrote 'Romeo and Juliet' and 'Hamlet'",
-      "question": "Who is William Shakespeare?",
-      "tags": ["Literature", "Drama"]
-    },
-    {
-      "answer": "The author of '1984' and 'Animal Farm'",
-      "question": "Who is George Orwell?",
-      "tags": ["Literature"]
-    },
-    {
-      "answer": "This novel begins with the line 'Call me Ishmael'",
-      "question": "What is Moby-Dick?",
-      "tags": ["Literature"]
-    },
-    {
-      "answer": "The author of the Harry Potter series",
-      "question": "Who is J.K. Rowling?",
-      "tags": ["Literature", "Pop Culture"]
-    },
-    {
-      "answer": "This Shakespeare play features the characters Othello, Iago, and Desdemona",
-      "question": "What is Othello?",
-      "tags": ["Literature", "Drama"]
-    },
-    {
-      "answer": "The number of sides on a hexagon",
-      "question": "What is 6?",
-      "tags": ["Math"]
-    },
-    {
-      "answer": "This mathematical constant is approximately 3.14159",
-      "question": "What is pi?",
-      "tags": ["Math"]
-    },
-    {
-      "answer": "The Pythagorean theorem states that a² + b² equals this for a right triangle",
-      "question": "What is c²?",
-      "tags": ["Math"]
-    },
-    {
-      "answer": "The branch of mathematics dealing with rates of change and accumulation",
-      "question": "What is calculus?",
-      "tags": ["Math"]
-    },
-    {
-      "answer": "A triangle with all three sides of equal length",
-      "question": "What is an equilateral triangle?",
-      "tags": ["Math", "Geometry"]
-    },
-    {
-      "answer": "This sport features a quarterback, wide receivers, and a touchdown worth 6 points",
-      "question": "What is American football?",
-      "tags": ["Sports"]
-    },
-    {
-      "answer": "The number of players on a standard basketball team on the court at one time",
-      "question": "What is 5?",
-      "tags": ["Sports", "Basketball"]
-    },
-    {
-      "answer": "This athlete won 23 Olympic gold medals, the most by any Olympian",
-      "question": "Who is Michael Phelps?",
-      "tags": ["Sports", "Olympics"]
-    },
-    {
-      "answer": "The Grand Slam tennis tournament played on clay courts in Paris",
-      "question": "What is the French Open?",
-      "tags": ["Sports", "Tennis"]
-    },
-    {
-      "answer": "This country has won the most FIFA World Cup titles with 5 championships",
-      "question": "What is Brazil?",
-      "tags": ["Sports", "Soccer"]
-    },
-    {
-      "answer": "The programming language known for its use of indentation to define code blocks",
-      "question": "What is Python?",
-      "tags": ["Technology", "Programming"]
-    },
-    {
-      "answer": "The company that created the iPhone",
-      "question": "What is Apple?",
-      "tags": ["Technology"]
-    },
-    {
-      "answer": "This protocol is the foundation of data communication on the World Wide Web",
-      "question": "What is HTTP?",
-      "tags": ["Technology"]
-    },
-    {
-      "answer": "The term for software that is freely available and whose source code anyone can modify",
-      "question": "What is open source?",
-      "tags": ["Technology"]
-    },
-    {
-      "answer": "This social media platform was founded by Mark Zuckerberg in 2004",
-      "question": "What is Facebook?",
-      "tags": ["Technology", "Pop Culture"]
-    },
-    {
-      "answer": "The painter of the Mona Lisa",
-      "question": "Who is Leonardo da Vinci?",
-      "tags": ["Art", "History"]
-    },
-    {
-      "answer": "This composer wrote the 'Ode to Joy' symphony while completely deaf",
-      "question": "Who is Ludwig van Beethoven?",
-      "tags": ["Music", "History"]
-    },
-    {
-      "answer": "The film that won the first Academy Award for Best Picture in 1928",
-      "question": "What is Wings?",
-      "tags": ["Pop Culture", "Film"]
-    },
-    {
-      "answer": "This superhero is also known as the Man of Steel",
-      "question": "Who is Superman?",
-      "tags": ["Pop Culture"]
-    },
-    {
-      "answer": "The tallest building in the world as of 2024, located in Dubai",
-      "question": "What is the Burj Khalifa?",
-      "tags": ["Geography", "Architecture"]
-    }
-  ]
+	"version": "1.0",
+	"questions": [
+		{
+			"clue": "This planet is known as the Red Planet due to iron oxide on its surface",
+			"response": "What is Mars?",
+			"tags": ["Science", "Space"]
+		},
+		{
+			"clue": "The chemical symbol for gold on the periodic table",
+			"response": "What is Au?",
+			"tags": ["Science", "Chemistry"]
+		},
+		{
+			"clue": "This scientist developed the theory of general relativity",
+			"response": "Who is Albert Einstein?",
+			"tags": ["Science", "Physics"]
+		},
+		{
+			"clue": "The powerhouse of the cell",
+			"response": "What is the mitochondria?",
+			"tags": ["Science", "Biology"]
+		},
+		{
+			"clue": "This gas makes up approximately 78% of Earth's atmosphere",
+			"response": "What is nitrogen?",
+			"tags": ["Science", "Chemistry"]
+		},
+		{
+			"clue": "The speed of light in a vacuum, approximately 299,792 kilometers per second",
+			"response": "What is the speed of light?",
+			"tags": ["Science", "Physics"]
+		},
+		{
+			"clue": "This is the largest organ in the human body",
+			"response": "What is the skin?",
+			"tags": ["Science", "Biology"]
+		},
+		{
+			"clue": "He wrote 'On the Origin of Species' and proposed the theory of evolution by natural selection",
+			"response": "Who is Charles Darwin?",
+			"tags": ["Science", "Biology"]
+		},
+		{
+			"clue": "The number of bones in the adult human body",
+			"response": "What is 206?",
+			"tags": ["Science", "Biology"]
+		},
+		{
+			"clue": "This element has the atomic number 1 and is the lightest on the periodic table",
+			"response": "What is hydrogen?",
+			"tags": ["Science", "Chemistry"]
+		},
+		{
+			"clue": "The 16th President of the United States, who issued the Emancipation Proclamation",
+			"response": "Who is Abraham Lincoln?",
+			"tags": ["History", "American History"]
+		},
+		{
+			"clue": "This ancient wonder was a massive statue located at the entrance of a Greek harbor",
+			"response": "What is the Colossus of Rhodes?",
+			"tags": ["History", "Ancient World"]
+		},
+		{
+			"clue": "The year World War II ended",
+			"response": "What is 1945?",
+			"tags": ["History", "World War II"]
+		},
+		{
+			"clue": "She was the first woman to win a Nobel Prize, winning in both Physics and Chemistry",
+			"response": "Who is Marie Curie?",
+			"tags": ["History", "Science"]
+		},
+		{
+			"clue": "This empire, ruled from Constantinople, was the continuation of the Eastern Roman Empire",
+			"response": "What is the Byzantine Empire?",
+			"tags": ["History", "Ancient World"]
+		},
+		{
+			"clue": "The document signed in 1215 that limited the power of the English king",
+			"response": "What is the Magna Carta?",
+			"tags": ["History", "Government"]
+		},
+		{
+			"clue": "This country was the first to give women the right to vote in 1893",
+			"response": "What is New Zealand?",
+			"tags": ["History", "Geography"]
+		},
+		{
+			"clue": "The ancient Egyptian writing system using pictorial symbols",
+			"response": "What are hieroglyphics?",
+			"tags": ["History", "Ancient World"]
+		},
+		{
+			"clue": "He was the first person to walk on the moon in 1969",
+			"response": "Who is Neil Armstrong?",
+			"tags": ["History", "Space"]
+		},
+		{
+			"clue": "This wall, stretching over 13,000 miles, was built to protect China from northern invasions",
+			"response": "What is the Great Wall of China?",
+			"tags": ["History", "Geography"]
+		},
+		{
+			"clue": "The longest river in the world",
+			"response": "What is the Nile River?",
+			"tags": ["Geography"]
+		},
+		{
+			"clue": "The smallest country in the world by area, located within Rome, Italy",
+			"response": "What is Vatican City?",
+			"tags": ["Geography"]
+		},
+		{
+			"clue": "The capital city of Australia",
+			"response": "What is Canberra?",
+			"tags": ["Geography"]
+		},
+		{
+			"clue": "This mountain range separates Europe from Asia",
+			"response": "What are the Ural Mountains?",
+			"tags": ["Geography"]
+		},
+		{
+			"clue": "The ocean located between Africa and Australia",
+			"response": "What is the Indian Ocean?",
+			"tags": ["Geography"]
+		},
+		{
+			"clue": "He wrote 'Romeo and Juliet' and 'Hamlet'",
+			"response": "Who is William Shakespeare?",
+			"tags": ["Literature", "Drama"]
+		},
+		{
+			"clue": "The author of '1984' and 'Animal Farm'",
+			"response": "Who is George Orwell?",
+			"tags": ["Literature"]
+		},
+		{
+			"clue": "This novel begins with the line 'Call me Ishmael'",
+			"response": "What is Moby-Dick?",
+			"tags": ["Literature"]
+		},
+		{
+			"clue": "The author of the Harry Potter series",
+			"response": "Who is J.K. Rowling?",
+			"tags": ["Literature", "Pop Culture"]
+		},
+		{
+			"clue": "This Shakespeare play features the characters Othello, Iago, and Desdemona",
+			"response": "What is Othello?",
+			"tags": ["Literature", "Drama"]
+		},
+		{
+			"clue": "The number of sides on a hexagon",
+			"response": "What is 6?",
+			"tags": ["Math"]
+		},
+		{
+			"clue": "This mathematical constant is approximately 3.14159",
+			"response": "What is pi?",
+			"tags": ["Math"]
+		},
+		{
+			"clue": "The Pythagorean theorem states that a² + b² equals this for a right triangle",
+			"response": "What is c²?",
+			"tags": ["Math"]
+		},
+		{
+			"clue": "The branch of mathematics dealing with rates of change and accumulation",
+			"response": "What is calculus?",
+			"tags": ["Math"]
+		},
+		{
+			"clue": "A triangle with all three sides of equal length",
+			"response": "What is an equilateral triangle?",
+			"tags": ["Math", "Geometry"]
+		},
+		{
+			"clue": "This sport features a quarterback, wide receivers, and a touchdown worth 6 points",
+			"response": "What is American football?",
+			"tags": ["Sports"]
+		},
+		{
+			"clue": "The number of players on a standard basketball team on the court at one time",
+			"response": "What is 5?",
+			"tags": ["Sports", "Basketball"]
+		},
+		{
+			"clue": "This athlete won 23 Olympic gold medals, the most by any Olympian",
+			"response": "Who is Michael Phelps?",
+			"tags": ["Sports", "Olympics"]
+		},
+		{
+			"clue": "The Grand Slam tennis tournament played on clay courts in Paris",
+			"response": "What is the French Open?",
+			"tags": ["Sports", "Tennis"]
+		},
+		{
+			"clue": "This country has won the most FIFA World Cup titles with 5 championships",
+			"response": "What is Brazil?",
+			"tags": ["Sports", "Soccer"]
+		},
+		{
+			"clue": "The programming language known for its use of indentation to define code blocks",
+			"response": "What is Python?",
+			"tags": ["Technology", "Programming"]
+		},
+		{
+			"clue": "The company that created the iPhone",
+			"response": "What is Apple?",
+			"tags": ["Technology"]
+		},
+		{
+			"clue": "This protocol is the foundation of data communication on the World Wide Web",
+			"response": "What is HTTP?",
+			"tags": ["Technology"]
+		},
+		{
+			"clue": "The term for software that is freely available and whose source code anyone can modify",
+			"response": "What is open source?",
+			"tags": ["Technology"]
+		},
+		{
+			"clue": "This social media platform was founded by Mark Zuckerberg in 2004",
+			"response": "What is Facebook?",
+			"tags": ["Technology", "Pop Culture"]
+		},
+		{
+			"clue": "The painter of the Mona Lisa",
+			"response": "Who is Leonardo da Vinci?",
+			"tags": ["Art", "History"]
+		},
+		{
+			"clue": "This composer wrote the 'Ode to Joy' symphony while completely deaf",
+			"response": "Who is Ludwig van Beethoven?",
+			"tags": ["Music", "History"]
+		},
+		{
+			"clue": "The film that won the first Academy Award for Best Picture in 1928",
+			"response": "What is Wings?",
+			"tags": ["Pop Culture", "Film"]
+		},
+		{
+			"clue": "This superhero is also known as the Man of Steel",
+			"response": "Who is Superman?",
+			"tags": ["Pop Culture"]
+		},
+		{
+			"clue": "The tallest building in the world as of 2024, located in Dubai",
+			"response": "What is the Burj Khalifa?",
+			"tags": ["Geography", "Architecture"]
+		}
+	]
 }

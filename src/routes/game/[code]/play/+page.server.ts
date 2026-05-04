@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
 import * as schema from '$lib/server/schema';
-import { and, eq, asc } from 'drizzle-orm';
+import { eq, asc } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, url, platform }) => {
@@ -21,23 +21,23 @@ export const load: PageServerLoad = async ({ params, url, platform }) => {
 							with: {
 								slots: {
 									with: { question: true },
-									orderBy: [asc(schema.boardQuestionSlots.row)],
-								},
+									orderBy: [asc(schema.boardQuestionSlots.row)]
+								}
 							},
-							orderBy: [asc(schema.categories.order)],
-						},
-					},
+							orderBy: [asc(schema.categories.order)]
+						}
+					}
 				},
 				teams: {
-					with: { students: true },
+					with: { students: true }
 				},
-				gameState: true,
-			},
+				gameState: true
+			}
 		}),
 		db.query.students.findFirst({
 			where: eq(schema.students.id, studentId),
-			with: { team: true },
-		}),
+			with: { team: true }
+		})
 	]);
 
 	if (!game) throw error(404, 'Game not found');

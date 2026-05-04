@@ -8,7 +8,7 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ platform }) => {
 	const db = getDb(platform!.env.DB);
 	const tags = await db.query.tags.findMany({
-		orderBy: [asc(schema.tags.name)],
+		orderBy: [asc(schema.tags.name)]
 	});
 	return { tags };
 };
@@ -16,22 +16,30 @@ export const load: PageServerLoad = async ({ platform }) => {
 export const actions = {
 	default: async ({ locals, request, platform }) => {
 		const data = await request.formData();
-		const answer = data.get('answer');
-		const question = data.get('question');
+		const clue = data.get('clue');
+		const response = data.get('response');
 		const tagInput = data.get('tags');
 		const newTags = data.get('newTags');
 
-		if (!answer || typeof answer !== 'string' || answer.trim().length === 0) {
-			return fail(400, { error: 'Answer is required', answer: '', question: question?.toString() || '' });
+		if (!clue || typeof clue !== 'string' || clue.trim().length === 0) {
+			return fail(400, {
+				error: 'Clue is required',
+				clue: '',
+				response: response?.toString() || ''
+			});
 		}
-		if (!question || typeof question !== 'string' || question.trim().length === 0) {
-			return fail(400, { error: 'Question is required', answer, question: '' });
+		if (!response || typeof response !== 'string' || response.trim().length === 0) {
+			return fail(400, { error: 'Response is required', clue, response: '' });
 		}
 
 		const db = getDb(platform!.env.DB);
 		const selectedTagIds = tagInput ? tagInput.toString().split(',').filter(Boolean) : [];
 		const newTagNames = newTags
-			? newTags.toString().split(',').map((t) => t.trim()).filter(Boolean)
+			? newTags
+					.toString()
+					.split(',')
+					.map((t) => t.trim())
+					.filter(Boolean)
 			: [];
 
 		const createdTagIds: string[] = [];
@@ -47,11 +55,11 @@ export const actions = {
 
 		await db.insert(schema.questions).values({
 			id: questionId,
-			answer: answer.trim(),
-			question: question.trim(),
+			clue: clue.trim(),
+			response: response.trim(),
 			instructorId: locals.instructor!.id,
 			createdAt: now,
-			updatedAt: now,
+			updatedAt: now
 		});
 
 		for (const tagId of allTagIds) {

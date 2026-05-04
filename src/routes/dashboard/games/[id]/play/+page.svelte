@@ -1,594 +1,672 @@
 <script lang="ts">
-    import type { PageData } from "./$types";
-    import { onMount, onDestroy } from "svelte";
+	import type { PageData } from './$types';
+	import { onMount, onDestroy } from 'svelte';
 
-    let { data }: { data: PageData } = $props();
+	let { data }: { data: PageData } = $props();
 
-    // Local state for real-time updates
-    let teams = $state(data.game.teams);
-    let connectedStudents = $state(new Set<string>());
-    let answeredSlots = $state(data.game.gameState?.answeredSlots ? JSON.parse(data.game.gameState.answeredSlots as unknown as string) : []);
-    let currentSlot = $state<any>(null);
-    let selectedTeamId = $state("");
-    let submittingAnswer = $state(false);
-    let buzzerNotification = $state<{
-        studentName: string;
-        teamName: string;
-    } | null>(null);
-    let showEndGameConfirm = $state(false);
-    let endingGame = $state(false);
-    let endGameError = $state("");
-    let wsConnected = $state(false);
-    let wagerSubmitted = $state(false);
-    let currentWager = $state(0);
-    let wagerInput = $state("5");
-    let wagerError = $state("");
+	// Local state for real-time updates
+	let teams = $state(data.game.teams);
+	let connectedStudents = $state(new Set<string>());
+	let answeredSlots = $state(
+		data.game.gameState?.answeredSlots
+			? JSON.parse(data.game.gameState.answeredSlots as unknown as string)
+			: []
+	);
+	let currentSlot = $state<any>(null);
+	let selectedTeamId = $state('');
+	let submittingAnswer = $state(false);
+	let buzzerNotification = $state<{
+		studentName: string;
+		teamName: string;
+	} | null>(null);
+	let showEndGameConfirm = $state(false);
+	let endingGame = $state(false);
+	let endGameError = $state('');
+	let wsConnected = $state(false);
+	let wagerSubmitted = $state(false);
+	let currentWager = $state(0);
+	let wagerInput = $state('5');
+	let wagerError = $state('');
 
-    let ws: WebSocket | null = null;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let endGameTimeout: ReturnType<typeof setTimeout> | null = null;
+	let ws: WebSocket | null = null;
+	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+	let endGameTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    function send(msg: object) {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify(msg));
-        }
-    }
+	function send(msg: object) {
+		if (ws && ws.readyState === WebSocket.OPEN) {
+			ws.send(JSON.stringify(msg));
+		}
+	}
 
-    function isSlotAnswered(slotId: string) {
-        return answeredSlots.includes(slotId);
-    }
+	function isSlotAnswered(slotId: string) {
+		return answeredSlots.includes(slotId);
+	}
 
-    function endGame() {
-        endingGame = true;
-        endGameError = "";
-        send({ type: "end-game" });
-        endGameTimeout = setTimeout(() => {
-            endingGame = false;
-            endGameError = "No response from server. Please try again.";
-        }, 8000);
-    }
+	function endGame() {
+		endingGame = true;
+		endGameError = '';
+		send({ type: 'end-game' });
+		endGameTimeout = setTimeout(() => {
+			endingGame = false;
+			endGameError = 'No response from server. Please try again.';
+		}, 8000);
+	}
 
-    function resetEndGame() {
-        endingGame = false;
-        endGameError = "";
-        if (endGameTimeout) { clearTimeout(endGameTimeout); endGameTimeout = null; }
-    }
+	function resetEndGame() {
+		endingGame = false;
+		endGameError = '';
+		if (endGameTimeout) {
+			clearTimeout(endGameTimeout);
+			endGameTimeout = null;
+		}
+	}
 
-    function revealQuestion(slot: any) {
-        if (isSlotAnswered(slot.id)) return;
-        currentSlot = slot;
-        selectedTeamId = teams[0]?.id || "";
-        wagerSubmitted = false;
-        currentWager = 0;
-        wagerInput = "5";
-        wagerError = "";
-        send({ type: "reveal-question", slotId: slot.id });
-    }
+	function revealQuestion(slot: any) {
+		if (isSlotAnswered(slot.id)) return;
+		currentSlot = slot;
+		selectedTeamId = teams[0]?.id || '';
+		wagerSubmitted = false;
+		currentWager = 0;
+		wagerInput = '5';
+		wagerError = '';
+		send({ type: 'reveal-question', slotId: slot.id });
+	}
 
-    function submitWager() {
-        const wager = parseInt(wagerInput);
-        if (!selectedTeamId || !currentSlot) return;
-        const team = teams.find((t) => t.id === selectedTeamId);
-        const maxBoardPoints = Math.max(
-            ...data.game.board.categories.flatMap((c) => c.slots.map((s: any) => s.points))
-        );
-        const maxWager = Math.max(team?.score ?? 0, maxBoardPoints);
-        if (isNaN(wager) || wager < 5) {
-            wagerError = "Minimum wager is $5";
-            return;
-        }
-        if (wager > maxWager) {
-            wagerError = `Maximum wager is $${maxWager.toLocaleString()}`;
-            return;
-        }
-        wagerError = "";
-        send({ type: "submit-wager", teamId: selectedTeamId, wager });
-    }
+	function submitWager() {
+		const wager = parseInt(wagerInput);
+		if (!selectedTeamId || !currentSlot) return;
+		const team = teams.find((t) => t.id === selectedTeamId);
+		const maxBoardPoints = Math.max(
+			...data.game.board.categories.flatMap((c) => c.slots.map((s: any) => s.points))
+		);
+		const maxWager = Math.max(team?.score ?? 0, maxBoardPoints);
+		if (isNaN(wager) || wager < 5) {
+			wagerError = 'Minimum wager is $5';
+			return;
+		}
+		if (wager > maxWager) {
+			wagerError = `Maximum wager is $${maxWager.toLocaleString()}`;
+			return;
+		}
+		wagerError = '';
+		send({ type: 'submit-wager', teamId: selectedTeamId, wager });
+	}
 
-    function submitAnswer(isCorrect: boolean) {
-        if (!selectedTeamId || !currentSlot || submittingAnswer) return;
-        submittingAnswer = true;
-        send({ type: "answer", isCorrect, teamId: selectedTeamId });
-    }
+	function submitAnswer(isCorrect: boolean) {
+		if (!selectedTeamId || !currentSlot || submittingAnswer) return;
+		submittingAnswer = true;
+		send({ type: 'answer', isCorrect, teamId: selectedTeamId });
+	}
 
-    function closeModal() {
-        send({ type: "close-question" });
-        currentSlot = null;
-        submittingAnswer = false;
-        buzzerNotification = null;
-        wagerSubmitted = false;
-        currentWager = 0;
-        wagerInput = "5";
-        wagerError = "";
-    }
+	function closeModal() {
+		send({ type: 'close-question' });
+		currentSlot = null;
+		submittingAnswer = false;
+		buzzerNotification = null;
+		wagerSubmitted = false;
+		currentWager = 0;
+		wagerInput = '5';
+		wagerError = '';
+	}
 
-    // Count answered questions
-    let answeredCount = $derived(answeredSlots.length);
-    let totalQuestions = 30;
+	// Count answered questions
+	let answeredCount = $derived(answeredSlots.length);
+	let totalQuestions = 30;
 
-    function connect() {
-        if (ws) { ws.onclose = null; ws.close(); }
-        ws = new WebSocket(`/api/ws/${data.game.id}?role=instructor`);
+	function connect() {
+		if (ws) {
+			ws.onclose = null;
+			ws.close();
+		}
+		ws = new WebSocket(`/api/ws/${data.game.id}?role=instructor`);
 
-        ws.onopen = () => { wsConnected = true; };
+		ws.onopen = () => {
+			wsConnected = true;
+		};
 
-        ws.onmessage = (event) => {
-            try {
-                const msg = JSON.parse(event.data);
+		ws.onmessage = (event) => {
+			try {
+				const msg = JSON.parse(event.data);
 
-                switch (msg.type) {
-                    case "buzzer-pressed":
-                        buzzerNotification = {
-                            studentName: msg.studentName,
-                            teamName: msg.teamName,
-                        };
-                        if (msg.teamId) selectedTeamId = msg.teamId as string;
-                        setTimeout(() => { buzzerNotification = null; }, 3000);
-                        break;
+				switch (msg.type) {
+					case 'buzzer-pressed':
+						buzzerNotification = {
+							studentName: msg.studentName,
+							teamName: msg.teamName
+						};
+						if (msg.teamId) selectedTeamId = msg.teamId as string;
+						setTimeout(() => {
+							buzzerNotification = null;
+						}, 3000);
+						break;
 
-                    case "wager-submitted":
-                        wagerSubmitted = true;
-                        currentWager = msg.wager;
-                        selectedTeamId = msg.teamId;
-                        break;
+					case 'wager-submitted':
+						wagerSubmitted = true;
+						currentWager = msg.wager;
+						selectedTeamId = msg.teamId;
+						break;
 
-                    case "answer-submitted":
-                        teams = msg.teams;
-                        answeredSlots = msg.answeredSlots;
-                        currentSlot = null;
-                        selectedTeamId = "";
-                        submittingAnswer = false;
-                        buzzerNotification = null;
-                        wagerSubmitted = false;
-                        currentWager = 0;
-                        wagerInput = "5";
-                        break;
+					case 'answer-submitted':
+						teams = msg.teams;
+						answeredSlots = msg.answeredSlots;
+						currentSlot = null;
+						selectedTeamId = '';
+						submittingAnswer = false;
+						buzzerNotification = null;
+						wagerSubmitted = false;
+						currentWager = 0;
+						wagerInput = '5';
+						break;
 
-                    case "question-closed":
-                        currentSlot = null;
-                        submittingAnswer = false;
-                        buzzerNotification = null;
-                        wagerSubmitted = false;
-                        currentWager = 0;
-                        wagerInput = "5";
-                        break;
+					case 'question-closed':
+						currentSlot = null;
+						submittingAnswer = false;
+						buzzerNotification = null;
+						wagerSubmitted = false;
+						currentWager = 0;
+						wagerInput = '5';
+						break;
 
-                    case "student-status": {
-                        const next = new Set(connectedStudents);
-                        if (msg.connected) next.add(msg.studentId);
-                        else next.delete(msg.studentId);
-                        connectedStudents = next;
-                        break;
-                    }
+					case 'student-status': {
+						const next = new Set(connectedStudents);
+						if (msg.connected) next.add(msg.studentId);
+						else next.delete(msg.studentId);
+						connectedStudents = next;
+						break;
+					}
 
-                    case "connected-students-snapshot":
-                        connectedStudents = new Set<string>(msg.studentIds);
-                        break;
+					case 'connected-students-snapshot':
+						connectedStudents = new Set<string>(msg.studentIds);
+						break;
 
-                    case "game-state-snapshot":
-                        if (msg.teams) teams = msg.teams;
-                        if (msg.answeredSlots) answeredSlots = msg.answeredSlots;
-                        if (msg.currentSlot) {
-                            currentSlot = msg.currentSlot;
-                            if (msg.currentWager) {
-                                wagerSubmitted = true;
-                                currentWager = msg.currentWager;
-                                selectedTeamId = msg.currentTeamId || teams[0]?.id || "";
-                            } else {
-                                selectedTeamId = teams[0]?.id || "";
-                            }
-                        }
-                        break;
+					case 'game-state-snapshot':
+						if (msg.teams) teams = msg.teams;
+						if (msg.answeredSlots) answeredSlots = msg.answeredSlots;
+						if (msg.currentSlot) {
+							currentSlot = msg.currentSlot;
+							if (msg.currentWager) {
+								wagerSubmitted = true;
+								currentWager = msg.currentWager;
+								selectedTeamId = msg.currentTeamId || teams[0]?.id || '';
+							} else {
+								selectedTeamId = teams[0]?.id || '';
+							}
+						}
+						break;
 
-                    case "error":
-                        resetEndGame();
-                        submittingAnswer = false;
-                        break;
+					case 'error':
+						resetEndGame();
+						submittingAnswer = false;
+						break;
 
-                    case "game-ended":
-                        if (endGameTimeout) clearTimeout(endGameTimeout);
-                        window.location.href = "/dashboard/games";
-                        break;
-                }
-            } catch (err) {
-                console.error("[WS Instructor] Error:", err);
-            }
-        };
+					case 'game-ended':
+						if (endGameTimeout) clearTimeout(endGameTimeout);
+						window.location.href = '/dashboard/games';
+						break;
+				}
+			} catch (err) {
+				console.error('[WS Instructor] Error:', err);
+			}
+		};
 
-        ws.onerror = () => console.error("[WS Instructor] Connection error");
-        ws.onclose = () => {
-            wsConnected = false;
-            resetEndGame();
-            reconnectTimer = setTimeout(connect, 2500);
-        };
-    }
+		ws.onerror = () => console.error('[WS Instructor] Connection error');
+		ws.onclose = () => {
+			wsConnected = false;
+			resetEndGame();
+			reconnectTimer = setTimeout(connect, 2500);
+		};
+	}
 
-    onMount(connect);
-    onDestroy(() => {
-        if (reconnectTimer) clearTimeout(reconnectTimer);
-        if (ws) { ws.onclose = null; ws.close(); }
-        if (endGameTimeout) clearTimeout(endGameTimeout);
-    });
+	onMount(connect);
+	onDestroy(() => {
+		if (reconnectTimer) clearTimeout(reconnectTimer);
+		if (ws) {
+			ws.onclose = null;
+			ws.close();
+		}
+		if (endGameTimeout) clearTimeout(endGameTimeout);
+	});
 </script>
 
 <div class="h-screen flex flex-col bg-gray-50 overflow-hidden">
+	<!-- Top bar -->
+	<div
+		class="shrink-0 px-5 py-3 border-b border-gray-100 bg-white flex items-center justify-between gap-4 shadow-sm"
+	>
+		<!-- Left: board name + progress + connection -->
+		<div class="flex items-center gap-3">
+			<div
+				class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-100 text-xs font-medium"
+			>
+				{#if wsConnected}
+					<div class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
+					<span class="text-green-600">Live</span>
+				{:else}
+					<div class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>
+					<span class="text-red-500">Reconnecting...</span>
+				{/if}
+			</div>
+			<span class="text-gray-900 font-bold text-lg">{data.game.board.name}</span>
+			<span class="text-gray-400 text-sm">{answeredCount} / {totalQuestions} answered</span>
+		</div>
+		<!-- Right: action buttons -->
+		<div class="flex items-center gap-2">
+			{#if data.game.status === 'COMPLETED'}
+				<a
+					href="/dashboard/games/{data.game.id}/results"
+					class="px-3 py-1.5 rounded-xl text-sm font-bold text-white hover:brightness-105 transition-colors"
+					style="background: #f59e0b"
+				>
+					View Results
+				</a>
+			{:else}
+				<a
+					href="/game/{data.game.code}/projector"
+					target="_blank"
+					class="bg-gray-100 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
+				>
+					Projector
+				</a>
+				<button
+					type="button"
+					onclick={() => (showEndGameConfirm = true)}
+					class="bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-red-100 transition-colors"
+				>
+					End Game
+				</button>
+			{/if}
+		</div>
+	</div>
 
-    <!-- Top bar -->
-    <div class="shrink-0 px-5 py-3 border-b border-gray-100 bg-white flex items-center justify-between gap-4 shadow-sm">
-        <!-- Left: board name + progress + connection -->
-        <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-100 text-xs font-medium">
-                {#if wsConnected}
-                    <div class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
-                    <span class="text-green-600">Live</span>
-                {:else}
-                    <div class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>
-                    <span class="text-red-500">Reconnecting...</span>
-                {/if}
-            </div>
-            <span class="text-gray-900 font-bold text-lg">{data.game.board.name}</span>
-            <span class="text-gray-400 text-sm">{answeredCount} / {totalQuestions} answered</span>
-        </div>
-        <!-- Right: action buttons -->
-        <div class="flex items-center gap-2">
-            {#if data.game.status === "COMPLETED"}
-                <a
-                    href="/dashboard/games/{data.game.id}/results"
-                    class="px-3 py-1.5 rounded-xl text-sm font-bold text-white hover:brightness-105 transition-colors"
-                    style="background: #f59e0b"
-                >
-                    View Results
-                </a>
-            {:else}
-                <a
-                    href="/game/{data.game.code}/projector"
-                    target="_blank"
-                    class="bg-gray-100 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors"
-                >
-                    Projector
-                </a>
-                <button
-                    type="button"
-                    onclick={() => (showEndGameConfirm = true)}
-                    class="bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-red-100 transition-colors"
-                >
-                    End Game
-                </button>
-            {/if}
-        </div>
-    </div>
+	<!-- Team strip -->
+	<div class="shrink-0 px-5 py-3 border-b border-gray-100 bg-white">
+		<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+			{#each teams as team}
+				<div class="p-2.5 rounded-2xl border bg-white" style={`border-color: ${team.color}40`}>
+					<!-- Team name + score -->
+					<div class="flex items-center justify-between mb-1.5">
+						<div class="flex items-center gap-1.5 min-w-0">
+							<div
+								class="w-2 h-2 rounded-full shrink-0"
+								style={`background-color: ${team.color}`}
+							></div>
+							<span class="text-gray-700 text-xs font-semibold truncate">{team.name}</span>
+						</div>
+						<span class="text-xs font-black shrink-0 ml-1" style={`color: ${team.color}`}>
+							${team.score}
+						</span>
+					</div>
+					<!-- Student list -->
+					<div class="flex flex-col gap-0.5">
+						{#each team.students as student}
+							<div class="flex items-center gap-1.5">
+								<div
+									class={`w-1.5 h-1.5 rounded-full shrink-0 ${connectedStudents.has(student.id) ? 'bg-green-400' : 'bg-gray-200'}`}
+								></div>
+								<span
+									class={`text-xs truncate ${connectedStudents.has(student.id) ? 'text-gray-600' : 'text-gray-300'}`}
+									>{student.name}</span
+								>
+							</div>
+						{/each}
+						{#if team.students.length === 0}
+							<p class="text-gray-300 text-xs italic">No students</p>
+						{/if}
+					</div>
+				</div>
+			{/each}
+		</div>
+	</div>
 
-    <!-- Team strip -->
-    <div class="shrink-0 px-5 py-3 border-b border-gray-100 bg-white">
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-            {#each teams as team}
-                <div
-                    class="p-2.5 rounded-2xl border bg-white"
-                    style={`border-color: ${team.color}40`}
-                >
-                    <!-- Team name + score -->
-                    <div class="flex items-center justify-between mb-1.5">
-                        <div class="flex items-center gap-1.5 min-w-0">
-                            <div
-                                class="w-2 h-2 rounded-full shrink-0"
-                                style={`background-color: ${team.color}`}
-                            ></div>
-                            <span class="text-gray-700 text-xs font-semibold truncate">{team.name}</span>
-                        </div>
-                        <span class="text-xs font-black shrink-0 ml-1" style={`color: ${team.color}`}>
-                            ${team.score}
-                        </span>
-                    </div>
-                    <!-- Student list -->
-                    <div class="flex flex-col gap-0.5">
-                        {#each team.students as student}
-                            <div class="flex items-center gap-1.5">
-                                <div
-                                    class={`w-1.5 h-1.5 rounded-full shrink-0 ${connectedStudents.has(student.id) ? "bg-green-400" : "bg-gray-200"}`}
-                                ></div>
-                                <span
-                                    class={`text-xs truncate ${connectedStudents.has(student.id) ? "text-gray-600" : "text-gray-300"}`}
-                                >{student.name}</span>
-                            </div>
-                        {/each}
-                        {#if team.students.length === 0}
-                            <p class="text-gray-300 text-xs italic">No students</p>
-                        {/if}
-                    </div>
-                </div>
-            {/each}
-        </div>
-    </div>
+	<!-- Board area -->
+	<div class="flex-1 px-5 pb-5 flex flex-col min-h-0 pt-3">
+		<div class="flex-1 rounded-2xl overflow-hidden flex flex-col bg-[#0a1628] min-h-0">
+			<!-- Category headers -->
+			<div class="grid grid-cols-6 gap-1 p-2 bg-white/5 shrink-0">
+				{#each data.game.board.categories as category}
+					<div
+						class="text-yellow-400 font-bold text-xs uppercase tracking-wide text-center py-2 px-1"
+					>
+						{category.name}
+					</div>
+				{/each}
+			</div>
 
-    <!-- Board area -->
-    <div class="flex-1 px-5 pb-5 flex flex-col min-h-0 pt-3">
-        <div class="flex-1 rounded-2xl overflow-hidden flex flex-col bg-[#0a1628] min-h-0">
-            <!-- Category headers -->
-            <div class="grid grid-cols-6 gap-1 p-2 bg-white/5 shrink-0">
-                {#each data.game.board.categories as category}
-                    <div class="text-yellow-400 font-bold text-xs uppercase tracking-wide text-center py-2 px-1">
-                        {category.name}
-                    </div>
-                {/each}
-            </div>
-
-            <!-- Question grid -->
-            <div class="grid grid-cols-6 gap-1 flex-1 p-2 pt-1 min-h-0">
-                {#each Array.from({ length: 5 }, (_, rowIndex) => rowIndex) as rowIndex}
-                    {#each data.game.board.categories as category}
-                        {@const slot = category.slots.find((s) => s.row === rowIndex)}
-                        {#if slot}
-                            <button
-                                type="button"
-                                onclick={() => revealQuestion(slot)}
-                                disabled={isSlotAnswered(slot.id)}
-                                class={`
+			<!-- Question grid -->
+			<div class="grid grid-cols-6 gap-1 flex-1 p-2 pt-1 min-h-0">
+				{#each Array.from({ length: 5 }, (_, rowIndex) => rowIndex) as rowIndex}
+					{#each data.game.board.categories as category}
+						{@const slot = category.slots.find((s) => s.row === rowIndex)}
+						{#if slot}
+							<button
+								type="button"
+								onclick={() => revealQuestion(slot)}
+								disabled={isSlotAnswered(slot.id)}
+								class={`
                                     rounded-xl transition-all flex items-center justify-center
                                     ${
-                                        isSlotAnswered(slot.id)
-                                            ? "bg-white/[0.03] cursor-not-allowed"
-                                            : "bg-blue-800 hover:bg-blue-600 active:scale-95 cursor-pointer shadow"
-                                    }
-                                    ${slot.isDailyDouble && !isSlotAnswered(slot.id) ? "ring-1 ring-yellow-400" : ""}
+																			isSlotAnswered(slot.id)
+																				? 'bg-white/[0.03] cursor-not-allowed'
+																				: 'bg-blue-800 hover:bg-blue-600 active:scale-95 cursor-pointer shadow'
+																		}
+                                    ${slot.isWildCard && !isSlotAnswered(slot.id) ? 'ring-1 ring-yellow-400' : ''}
                                 `}
-                            >
-                                {#if !isSlotAnswered(slot.id)}
-                                    <span class="text-yellow-400 font-black text-lg md:text-xl">${slot.points}</span>
-                                {:else}
-                                    <svg
-                                        class="w-5 h-5 text-white/15"
-                                        fill="currentColor"
-                                        viewBox="0 0 20 20"
-                                    >
-                                        <path
-                                            fill-rule="evenodd"
-                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                            clip-rule="evenodd"
-                                        />
-                                    </svg>
-                                {/if}
-                            </button>
-                        {/if}
-                    {/each}
-                {/each}
-            </div>
-        </div>
-    </div>
+							>
+								{#if !isSlotAnswered(slot.id)}
+									<span class="text-yellow-400 font-black text-lg md:text-xl">${slot.points}</span>
+								{:else}
+									<svg class="w-5 h-5 text-white/15" fill="currentColor" viewBox="0 0 20 20">
+										<path
+											fill-rule="evenodd"
+											d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+											clip-rule="evenodd"
+										/>
+									</svg>
+								{/if}
+							</button>
+						{/if}
+					{/each}
+				{/each}
+			</div>
+		</div>
+	</div>
 </div>
 
 <!-- Question Modal -->
 {#if currentSlot}
-    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-white border border-gray-100 rounded-3xl max-w-3xl w-full p-7 shadow-2xl">
-            <!-- Header -->
-            <div class="flex justify-between items-start mb-5">
-                <div>
-                    <p class="text-gray-400 text-xs uppercase tracking-widest font-medium mb-1">
-                        {data.game.board.categories.find((c) =>
-                            c.slots.some((s: any) => s.id === currentSlot.id),
-                        )?.name}
-                    </p>
-                    {#if currentSlot.isDailyDouble && wagerSubmitted}
-                        <p class="text-3xl font-black" style="color: #f59e0b">
-                            Wager: ${currentWager.toLocaleString()}
-                        </p>
-                    {:else}
-                        <p class="text-3xl font-black" style="color: #f59e0b">
-                            ${currentSlot.points}
-                        </p>
-                    {/if}
-                    {#if currentSlot.isDailyDouble}
-                        <span class="mt-2 inline-block px-3 py-1 rounded-full text-xs font-black text-white" style="background: #f59e0b">
-                            DAILY DOUBLE
-                        </span>
-                    {/if}
-                </div>
-                <button
-                    type="button"
-                    onclick={closeModal}
-                    class="text-gray-300 hover:text-gray-600 transition-colors p-1"
-                >
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
+	<div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+		<div class="bg-white border border-gray-100 rounded-3xl max-w-3xl w-full p-7 shadow-2xl">
+			<!-- Header -->
+			<div class="flex justify-between items-start mb-5">
+				<div>
+					<p class="text-gray-400 text-xs uppercase tracking-widest font-medium mb-1">
+						{data.game.board.categories.find((c) =>
+							c.slots.some((s: any) => s.id === currentSlot.id)
+						)?.name}
+					</p>
+					{#if currentSlot.isWildCard && wagerSubmitted}
+						<p class="text-3xl font-black" style="color: #f59e0b">
+							Wager: ${currentWager.toLocaleString()}
+						</p>
+					{:else}
+						<p class="text-3xl font-black" style="color: #f59e0b">
+							${currentSlot.points}
+						</p>
+					{/if}
+					{#if currentSlot.isWildCard}
+						<span
+							class="mt-2 inline-block px-3 py-1 rounded-full text-xs font-black text-white"
+							style="background: #f59e0b"
+						>
+							WILD CARD
+						</span>
+					{/if}
+				</div>
+				<button
+					type="button"
+					onclick={closeModal}
+					class="text-gray-300 hover:text-gray-600 transition-colors p-1"
+					aria-label="Close"
+				>
+					<svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/>
+					</svg>
+				</button>
+			</div>
 
-            {#if currentSlot.isDailyDouble && !wagerSubmitted}
-                <!-- Daily Double: wager entry phase -->
-                <div class="rounded-2xl p-5 mb-5" style="background: linear-gradient(135deg, #78350f, #b45309)">
-                    <p class="text-amber-200 text-xs uppercase tracking-widest mb-1">Daily Double</p>
-                    <p class="text-white text-sm">Select the wagering team and enter their wager before revealing the clue.</p>
-                </div>
+			{#if currentSlot.isWildCard && !wagerSubmitted}
+				<!-- Wild Card: wager entry phase -->
+				<div
+					class="rounded-2xl p-5 mb-5"
+					style="background: linear-gradient(135deg, #78350f, #b45309)"
+				>
+					<p class="text-amber-200 text-xs uppercase tracking-widest mb-1">Wild Card</p>
+					<p class="text-white text-sm">
+						Select the wagering team and enter their wager before revealing the clue.
+					</p>
+				</div>
 
-                <!-- Team selector -->
-                <div class="mb-4">
-                    <p class="text-gray-500 text-sm font-medium mb-3">Which team is wagering?</p>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {#each teams as team}
-                            <button
-                                type="button"
-                                onclick={() => (selectedTeamId = team.id)}
-                                class={`p-3 rounded-xl border-2 transition-all text-left ${selectedTeamId === team.id ? "ring-2 ring-gray-400" : "hover:brightness-95"}`}
-                                style={`background: ${team.color}10; border-color: ${team.color}40`}
-                            >
-                                <div class="flex items-center gap-2 mb-0.5">
-                                    <div class="w-2.5 h-2.5 rounded-full" style={`background-color: ${team.color}`}></div>
-                                    <span class="text-gray-800 font-semibold text-sm truncate">{team.name}</span>
-                                </div>
-                                <span class="text-xs font-bold" style={`color: ${team.color}`}>${team.score.toLocaleString()}</span>
-                            </button>
-                        {/each}
-                    </div>
-                </div>
+				<!-- Team selector -->
+				<div class="mb-4">
+					<p class="text-gray-500 text-sm font-medium mb-3">Which team is wagering?</p>
+					<div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+						{#each teams as team}
+							<button
+								type="button"
+								onclick={() => (selectedTeamId = team.id)}
+								class={`p-3 rounded-xl border-2 transition-all text-left ${selectedTeamId === team.id ? 'ring-2 ring-gray-400' : 'hover:brightness-95'}`}
+								style={`background: ${team.color}10; border-color: ${team.color}40`}
+							>
+								<div class="flex items-center gap-2 mb-0.5">
+									<div
+										class="w-2.5 h-2.5 rounded-full"
+										style={`background-color: ${team.color}`}
+									></div>
+									<span class="text-gray-800 font-semibold text-sm truncate">{team.name}</span>
+								</div>
+								<span class="text-xs font-bold" style={`color: ${team.color}`}
+									>${team.score.toLocaleString()}</span
+								>
+							</button>
+						{/each}
+					</div>
+				</div>
 
-                <!-- Wager input -->
-                <div class="mb-5">
-                    <p class="text-gray-500 text-sm font-medium mb-2">Wager amount</p>
-                    {#if selectedTeamId}
-                        {@const team = teams.find((t) => t.id === selectedTeamId)}
-                        {@const maxBoardPoints = Math.max(...data.game.board.categories.flatMap((c) => c.slots.map((s: any) => s.points)))}
-                        {@const maxWager = Math.max(team?.score ?? 0, maxBoardPoints)}
-                        <p class="text-gray-400 text-xs mb-2">Min $5 · Max ${maxWager.toLocaleString()}</p>
-                    {/if}
-                    <div class="flex gap-2">
-                        <div class="relative flex-1">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
-                            <input
-                                type="number"
-                                min="5"
-                                bind:value={wagerInput}
-                                onkeydown={(e) => e.key === "Enter" && submitWager()}
-                                class="w-full pl-7 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 font-bold text-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
-                                placeholder="0"
-                            />
-                        </div>
-                        <button
-                            type="button"
-                            onclick={submitWager}
-                            disabled={!selectedTeamId}
-                            class="px-6 py-3 rounded-xl font-black text-white disabled:opacity-40 transition-colors"
-                            style="background: #f59e0b"
-                        >
-                            Lock In
-                        </button>
-                    </div>
-                    {#if wagerError}
-                        <p class="text-red-500 text-sm mt-2">{wagerError}</p>
-                    {/if}
-                </div>
+				<!-- Wager input -->
+				<div class="mb-5">
+					<p class="text-gray-500 text-sm font-medium mb-2">Wager amount</p>
+					{#if selectedTeamId}
+						{@const team = teams.find((t) => t.id === selectedTeamId)}
+						{@const maxBoardPoints = Math.max(
+							...data.game.board.categories.flatMap((c) => c.slots.map((s: any) => s.points))
+						)}
+						{@const maxWager = Math.max(team?.score ?? 0, maxBoardPoints)}
+						<p class="text-gray-400 text-xs mb-2">Min $5 · Max ${maxWager.toLocaleString()}</p>
+					{/if}
+					<div class="flex gap-2">
+						<div class="relative flex-1">
+							<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span
+							>
+							<input
+								type="number"
+								min="5"
+								bind:value={wagerInput}
+								onkeydown={(e) => e.key === 'Enter' && submitWager()}
+								class="w-full pl-7 pr-4 py-3 border border-gray-200 rounded-xl text-gray-900 font-bold text-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
+								placeholder="0"
+							/>
+						</div>
+						<button
+							type="button"
+							onclick={submitWager}
+							disabled={!selectedTeamId}
+							class="px-6 py-3 rounded-xl font-black text-white disabled:opacity-40 transition-colors"
+							style="background: #f59e0b"
+						>
+							Lock In
+						</button>
+					</div>
+					{#if wagerError}
+						<p class="text-red-500 text-sm mt-2">{wagerError}</p>
+					{/if}
+				</div>
+			{:else}
+				<!-- Normal question or Wild Card after wager is set -->
 
-            {:else}
-                <!-- Normal question or Daily Double after wager is set -->
+				<!-- Buzzer notification -->
+				{#if buzzerNotification}
+					<div class="bg-red-600 rounded-2xl px-5 py-3 mb-5 flex items-center gap-3 animate-pulse">
+						<svg class="w-6 h-6 text-white shrink-0" fill="currentColor" viewBox="0 0 20 20">
+							<path
+								d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"
+							/>
+						</svg>
+						<div>
+							<p class="font-bold text-white text-sm">Buzzer Pressed!</p>
+							<p class="text-red-200 text-xs">
+								{buzzerNotification.studentName} from {buzzerNotification.teamName}
+							</p>
+						</div>
+					</div>
+				{/if}
 
-                <!-- Buzzer notification -->
-                {#if buzzerNotification}
-                    <div class="bg-red-600 rounded-2xl px-5 py-3 mb-5 flex items-center gap-3 animate-pulse">
-                        <svg class="w-6 h-6 text-white shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                        </svg>
-                        <div>
-                            <p class="font-bold text-white text-sm">Buzzer Pressed!</p>
-                            <p class="text-red-200 text-xs">{buzzerNotification.studentName} from {buzzerNotification.teamName}</p>
-                        </div>
-                    </div>
-                {/if}
+				<!-- Clue section -->
+				<div
+					class="rounded-2xl p-5 mb-4"
+					style="background: linear-gradient(135deg, #1e3a8a, #1d4ed8)"
+				>
+					<p class="text-blue-300 text-xs uppercase tracking-widest mb-2">Clue</p>
+					<p class="text-white text-xl leading-relaxed">{currentSlot.question.clue}</p>
+				</div>
 
-                <!-- Clue section -->
-                <div class="rounded-2xl p-5 mb-4" style="background: linear-gradient(135deg, #1e3a8a, #1d4ed8)">
-                    <p class="text-blue-300 text-xs uppercase tracking-widest mb-2">Clue</p>
-                    <p class="text-white text-xl leading-relaxed">{currentSlot.question.answer}</p>
-                </div>
+				<!-- Answer section -->
+				<div class="bg-amber-50 border border-amber-100 rounded-2xl p-5 mb-5">
+					<p class="text-amber-400 text-xs uppercase tracking-widest mb-2">Correct Response</p>
+					<p class="text-amber-700 text-xl font-semibold">{currentSlot.question.response}</p>
+				</div>
 
-                <!-- Answer section -->
-                <div class="bg-amber-50 border border-amber-100 rounded-2xl p-5 mb-5">
-                    <p class="text-amber-400 text-xs uppercase tracking-widest mb-2">Correct Response</p>
-                    <p class="text-amber-700 text-xl font-semibold">{currentSlot.question.question}</p>
-                </div>
+				{#if !currentSlot.isWildCard}
+					<!-- Team selector (only for non-daily-double) -->
+					<div class="mb-5">
+						<p class="text-gray-500 text-sm font-medium mb-3">Which team is answering?</p>
+						<div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+							{#each teams as team}
+								<button
+									type="button"
+									onclick={() => (selectedTeamId = team.id)}
+									class={`p-3 rounded-xl border-2 transition-all text-left ${selectedTeamId === team.id ? 'ring-2 ring-gray-400' : 'hover:brightness-95'}`}
+									style={`background: ${team.color}10; border-color: ${team.color}40`}
+								>
+									<div class="flex items-center gap-2 mb-0.5">
+										<div
+											class="w-2.5 h-2.5 rounded-full"
+											style={`background-color: ${team.color}`}
+										></div>
+										<span class="text-gray-800 font-semibold text-sm truncate">{team.name}</span>
+									</div>
+									<span class="text-xs font-bold" style={`color: ${team.color}`}
+										>${team.score.toLocaleString()}</span
+									>
+								</button>
+							{/each}
+						</div>
+					</div>
+				{:else}
+					<!-- Wild Card: show the wagering team (locked) -->
+					{@const wageringTeam = teams.find((t) => t.id === selectedTeamId)}
+					{#if wageringTeam}
+						<div
+							class="mb-5 p-3 rounded-xl border-2"
+							style={`background: ${wageringTeam.color}10; border-color: ${wageringTeam.color}40`}
+						>
+							<p class="text-gray-500 text-xs font-medium mb-1 uppercase tracking-widest">
+								Wagering Team
+							</p>
+							<div class="flex items-center gap-2">
+								<div
+									class="w-3 h-3 rounded-full"
+									style={`background-color: ${wageringTeam.color}`}
+								></div>
+								<span class="text-gray-800 font-bold">{wageringTeam.name}</span>
+								<span class="font-black" style={`color: ${wageringTeam.color}`}
+									>${wageringTeam.score.toLocaleString()}</span
+								>
+							</div>
+						</div>
+					{/if}
+				{/if}
 
-                {#if !currentSlot.isDailyDouble}
-                    <!-- Team selector (only for non-daily-double) -->
-                    <div class="mb-5">
-                        <p class="text-gray-500 text-sm font-medium mb-3">Which team is answering?</p>
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                            {#each teams as team}
-                                <button
-                                    type="button"
-                                    onclick={() => (selectedTeamId = team.id)}
-                                    class={`p-3 rounded-xl border-2 transition-all text-left ${selectedTeamId === team.id ? "ring-2 ring-gray-400" : "hover:brightness-95"}`}
-                                    style={`background: ${team.color}10; border-color: ${team.color}40`}
-                                >
-                                    <div class="flex items-center gap-2 mb-0.5">
-                                        <div class="w-2.5 h-2.5 rounded-full" style={`background-color: ${team.color}`}></div>
-                                        <span class="text-gray-800 font-semibold text-sm truncate">{team.name}</span>
-                                    </div>
-                                    <span class="text-xs font-bold" style={`color: ${team.color}`}>${team.score.toLocaleString()}</span>
-                                </button>
-                            {/each}
-                        </div>
-                    </div>
-                {:else}
-                    <!-- Daily Double: show the wagering team (locked) -->
-                    {@const wageringTeam = teams.find((t) => t.id === selectedTeamId)}
-                    {#if wageringTeam}
-                        <div class="mb-5 p-3 rounded-xl border-2" style={`background: ${wageringTeam.color}10; border-color: ${wageringTeam.color}40`}>
-                            <p class="text-gray-500 text-xs font-medium mb-1 uppercase tracking-widest">Wagering Team</p>
-                            <div class="flex items-center gap-2">
-                                <div class="w-3 h-3 rounded-full" style={`background-color: ${wageringTeam.color}`}></div>
-                                <span class="text-gray-800 font-bold">{wageringTeam.name}</span>
-                                <span class="font-black" style={`color: ${wageringTeam.color}`}>${wageringTeam.score.toLocaleString()}</span>
-                            </div>
-                        </div>
-                    {/if}
-                {/if}
-
-                <!-- Score buttons -->
-                {@const displayPoints = currentSlot.isDailyDouble ? currentWager : currentSlot.points}
-                <div class="flex gap-3">
-                    <button
-                        type="button"
-                        onclick={() => submitAnswer(true)}
-                        disabled={submittingAnswer || !selectedTeamId}
-                        class="flex-1 py-4 bg-green-600 hover:bg-green-500 rounded-2xl font-black text-lg text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
-                    >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                        </svg>
-                        Correct (+${displayPoints.toLocaleString()})
-                    </button>
-                    <button
-                        type="button"
-                        onclick={() => submitAnswer(false)}
-                        disabled={submittingAnswer || !selectedTeamId}
-                        class="flex-1 py-4 bg-red-600 hover:bg-red-500 rounded-2xl font-black text-lg text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
-                    >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        Incorrect (-${displayPoints.toLocaleString()})
-                    </button>
-                </div>
-            {/if}
-        </div>
-    </div>
+				<!-- Score buttons -->
+				{@const displayPoints = currentSlot.isWildCard ? currentWager : currentSlot.points}
+				<div class="flex gap-3">
+					<button
+						type="button"
+						onclick={() => submitAnswer(true)}
+						disabled={submittingAnswer || !selectedTeamId}
+						class="flex-1 py-4 bg-green-600 hover:bg-green-500 rounded-2xl font-black text-lg text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2.5"
+								d="M5 13l4 4L19 7"
+							/>
+						</svg>
+						Correct (+${displayPoints.toLocaleString()})
+					</button>
+					<button
+						type="button"
+						onclick={() => submitAnswer(false)}
+						disabled={submittingAnswer || !selectedTeamId}
+						class="flex-1 py-4 bg-red-600 hover:bg-red-500 rounded-2xl font-black text-lg text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2.5"
+								d="M6 18L18 6M6 6l12 12"
+							/>
+						</svg>
+						Incorrect (-${displayPoints.toLocaleString()})
+					</button>
+				</div>
+			{/if}
+		</div>
+	</div>
 {/if}
 
 <!-- End Game Confirmation Modal -->
 {#if showEndGameConfirm}
-    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-white border border-gray-100 rounded-3xl max-w-sm w-full p-7 shadow-2xl">
-            <div class="flex items-center gap-4 mb-4">
-                <div class="bg-red-50 rounded-full p-3 shrink-0">
-                    <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                </div>
-                <h3 class="text-gray-900 font-black text-xl">End Game?</h3>
-            </div>
-            <p class="text-gray-500 text-sm mb-5">
-                Are you sure you want to end this game? Students will no longer be able to play and this action cannot be undone.
-            </p>
-            {#if endGameError}
-                <p class="text-red-500 text-sm mb-4">{endGameError}</p>
-            {/if}
-            <div class="flex gap-3">
-                <button
-                    type="button"
-                    onclick={() => { showEndGameConfirm = false; resetEndGame(); }}
-                    disabled={endingGame}
-                    class="bg-gray-100 text-gray-700 flex-1 py-3 rounded-2xl font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
-                >
-                    Cancel
-                </button>
-                <button
-                    type="button"
-                    onclick={endGame}
-                    disabled={endingGame}
-                    class="bg-red-600 text-white flex-1 py-3 rounded-2xl font-bold hover:bg-red-500 transition-colors disabled:opacity-50"
-                >
-                    {endingGame ? "Ending..." : "End Game"}
-                </button>
-            </div>
-        </div>
-    </div>
+	<div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+		<div class="bg-white border border-gray-100 rounded-3xl max-w-sm w-full p-7 shadow-2xl">
+			<div class="flex items-center gap-4 mb-4">
+				<div class="bg-red-50 rounded-full p-3 shrink-0">
+					<svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+						/>
+					</svg>
+				</div>
+				<h3 class="text-gray-900 font-black text-xl">End Game?</h3>
+			</div>
+			<p class="text-gray-500 text-sm mb-5">
+				Are you sure you want to end this game? Students will no longer be able to play and this
+				action cannot be undone.
+			</p>
+			{#if endGameError}
+				<p class="text-red-500 text-sm mb-4">{endGameError}</p>
+			{/if}
+			<div class="flex gap-3">
+				<button
+					type="button"
+					onclick={() => {
+						showEndGameConfirm = false;
+						resetEndGame();
+					}}
+					disabled={endingGame}
+					class="bg-gray-100 text-gray-700 flex-1 py-3 rounded-2xl font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					onclick={endGame}
+					disabled={endingGame}
+					class="bg-red-600 text-white flex-1 py-3 rounded-2xl font-bold hover:bg-red-500 transition-colors disabled:opacity-50"
+				>
+					{endingGame ? 'Ending...' : 'End Game'}
+				</button>
+			</div>
+		</div>
+	</div>
 {/if}
